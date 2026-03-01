@@ -9,6 +9,62 @@ import json
 import os
 import sqlite3
 from pathlib import Path
+# ===== FIX PER STREAMLIT CLOUD =====
+# Su Streamlit Cloud, l'unica directory scrivibile è /tmp
+DB_PATH = Path("/tmp/hotel_game.db")
+
+# Verifica che possiamo scrivere in /tmp
+print(f"📁 Usando database in: {DB_PATH}")
+print(f"📁 La directory /tmp è scrivibile: {os.access('/tmp', os.W_OK)}")
+
+# Funzione per ottenere connessione al database
+def get_db_connection():
+    """Restituisce una connessione al database SQLite"""
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        return conn
+    except Exception as e:
+        print(f"❌ Errore connessione database: {e}")
+        # Fallback: database in memoria
+        return sqlite3.connect(":memory:")
+
+# Inizializza il database
+def init_database():
+    """Inizializza il database SQLite per salvare i profili"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Tabella utenti
+        c.execute('''CREATE TABLE IF NOT EXISTS users
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      email TEXT UNIQUE,
+                      username TEXT UNIQUE,
+                      password TEXT,
+                      best_score INTEGER DEFAULT 0,
+                      games_played INTEGER DEFAULT 0,
+                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                      last_login TIMESTAMP,
+                      last_game TIMESTAMP)''')
+        
+        # Tabella punteggi per classifica
+        c.execute('''CREATE TABLE IF NOT EXISTS scores
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id INTEGER,
+                      score INTEGER,
+                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                      FOREIGN KEY (user_id) REFERENCES users (id))''')
+        
+        conn.commit()
+        conn.close()
+        print("✅ Database inizializzato correttamente")
+    except Exception as e:
+        print(f"❌ Errore inizializzazione database: {e}")
+        # Se c'è errore, usa database in memoria
+        st.session_state.use_memory_db = True
+
+# Inizializza il database
+init_database()
 
 # ===== TRADUZIONI =====
 TRANSLATIONS = {
@@ -199,7 +255,7 @@ def t(key):
 # ===== DATABASE SETUP =====
 def init_database():
     """Inizializza il database SQLite per salvare i profili"""
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     
     # Tabella utenti
@@ -229,7 +285,7 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def get_user_by_email(email):
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE email = ?", (email,))
     user = c.fetchone()
@@ -239,7 +295,7 @@ def get_user_by_email(email):
 
 def get_user_by_identifier(identifier):
     """Return a user row matching either email *or* username."""
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute(
         "SELECT * FROM users WHERE email = ? OR username = ?",
@@ -250,7 +306,7 @@ def get_user_by_identifier(identifier):
     return user
 
 def get_user_by_id(user_id):
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE id = ?", (user_id,))
     user = c.fetchone()
@@ -258,7 +314,7 @@ def get_user_by_id(user_id):
     return user
 
 def create_user(email, username, password):
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     try:
         hashed = hash_password(password)
@@ -273,14 +329,14 @@ def create_user(email, username, password):
         return None
 
 def update_user_login(email):
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("UPDATE users SET last_login = ? WHERE email = ?", (datetime.now(), email))
     conn.commit()
     conn.close()
 
 def update_user_stats(user_id, score):
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     
     # Aggiorna best score se necessario
@@ -301,7 +357,7 @@ def update_user_stats(user_id, score):
     conn.close()
 
 def get_user_scores(user_id, limit=10):
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("""
         SELECT score, created_at 
@@ -321,7 +377,7 @@ def get_leaderboard(limit=10):
     user is logged in. The query groups by user and selects the highest
     score for each, ordering the result descending.
     """
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("""
         SELECT u.username, MAX(s.score) AS best_score
@@ -336,7 +392,7 @@ def get_leaderboard(limit=10):
     return scores
 
 def get_user_stats(user_id):
-    conn = sqlite3.connect('hotel_game.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT username, email, best_score, games_played, created_at, last_game FROM users WHERE id = ?", (user_id,))
     stats = c.fetchone()
