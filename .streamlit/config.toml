@@ -1,0 +1,14 @@
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"
+
+[server]
+port = 8505
+enableXsrfProtection = false
+enableCORS = false
+baseUrlPath = ""
+
+[browser]
+gatherUsageStats = false
+
+

@@ -19,15 +19,20 @@
   },
   "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
   "postAttachCommand": {
-    "server": "streamlit run streamlit_app.py --server.enableCORS false --server.enableXsrfProtection false"
+    "server": "streamlit run streamlit_app.py --server.port 8503 --server.enableCORS false --server.enableXsrfProtection false"
   },
   "portsAttributes": {
-    "8501": {
+    "8503": {
       "label": "Application",
       "onAutoForward": "openPreview"
+    },
+    "8505": {
+      "label": "Application (8505)",
+      "onAutoForward": "notify"
     }
   },
   "forwardPorts": [
-    8501
+    8503,
+    8505
   ]
 }
