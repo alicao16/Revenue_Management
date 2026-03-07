@@ -9,62 +9,29 @@ import json
 import os
 import sqlite3
 from pathlib import Path
+import sys
+
+# ===== CONFIGURAZIONE =====
+st.set_page_config(layout="wide")
+
 # ===== FIX PER STREAMLIT CLOUD =====
 # Su Streamlit Cloud, l'unica directory scrivibile è /tmp
 DB_PATH = Path("/tmp/hotel_game.db")
 
 # Verifica che possiamo scrivere in /tmp
-print(f"📁 Usando database in: {DB_PATH}")
-print(f"📁 La directory /tmp è scrivibile: {os.access('/tmp', os.W_OK)}")
+print(f"📁 Usando database in: {DB_PATH}", file=sys.stderr)
+print(f"📁 La directory /tmp è scrivibile: {os.access('/tmp', os.W_OK)}", file=sys.stderr)
 
 # Funzione per ottenere connessione al database
 def get_db_connection():
     """Restituisce una connessione al database SQLite"""
     try:
-        conn = sqlite3.connect(str(DB_PATH))
+        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
         return conn
     except Exception as e:
-        print(f"❌ Errore connessione database: {e}")
+        print(f"❌ Errore connessione database: {e}", file=sys.stderr)
         # Fallback: database in memoria
         return sqlite3.connect(":memory:")
-
-# Inizializza il database
-def init_database():
-    """Inizializza il database SQLite per salvare i profili"""
-    try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        # Tabella utenti
-        c.execute('''CREATE TABLE IF NOT EXISTS users
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      email TEXT UNIQUE,
-                      username TEXT UNIQUE,
-                      password TEXT,
-                      best_score INTEGER DEFAULT 0,
-                      games_played INTEGER DEFAULT 0,
-                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                      last_login TIMESTAMP,
-                      last_game TIMESTAMP)''')
-        
-        # Tabella punteggi per classifica
-        c.execute('''CREATE TABLE IF NOT EXISTS scores
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      user_id INTEGER,
-                      score INTEGER,
-                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                      FOREIGN KEY (user_id) REFERENCES users (id))''')
-        
-        conn.commit()
-        conn.close()
-        print("✅ Database inizializzato correttamente")
-    except Exception as e:
-        print(f"❌ Errore inizializzazione database: {e}")
-        # Se c'è errore, usa database in memoria
-        st.session_state.use_memory_db = True
-
-# Inizializza il database
-init_database()
 
 # ===== TRADUZIONI =====
 TRANSLATIONS = {
@@ -255,31 +222,35 @@ def t(key):
 # ===== DATABASE SETUP =====
 def init_database():
     """Inizializza il database SQLite per salvare i profili"""
-    conn = get_db_connection()
-    c = conn.cursor()
-    
-    # Tabella utenti
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  email TEXT UNIQUE,
-                  username TEXT UNIQUE,
-                  password TEXT,
-                  best_score INTEGER DEFAULT 0,
-                  games_played INTEGER DEFAULT 0,
-                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  last_login TIMESTAMP,
-                  last_game TIMESTAMP)''')
-    
-    # Tabella punteggi per classifica
-    c.execute('''CREATE TABLE IF NOT EXISTS scores
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  user_id INTEGER,
-                  score INTEGER,
-                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  FOREIGN KEY (user_id) REFERENCES users (id))''')
-    
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Tabella utenti
+        c.execute('''CREATE TABLE IF NOT EXISTS users
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      email TEXT UNIQUE,
+                      username TEXT UNIQUE,
+                      password TEXT,
+                      best_score INTEGER DEFAULT 0,
+                      games_played INTEGER DEFAULT 0,
+                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                      last_login TIMESTAMP,
+                      last_game TIMESTAMP)''')
+        
+        # Tabella punteggi per classifica
+        c.execute('''CREATE TABLE IF NOT EXISTS scores
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id INTEGER,
+                      score INTEGER,
+                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                      FOREIGN KEY (user_id) REFERENCES users (id))''')
+        
+        conn.commit()
+        conn.close()
+        print("✅ Database inizializzato correttamente", file=sys.stderr)
+    except Exception as e:
+        print(f"❌ Errore inizializzazione database: {e}", file=sys.stderr)
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -292,9 +263,7 @@ def get_user_by_email(email):
     conn.close()
     return user
 
-
 def get_user_by_identifier(identifier):
-    """Return a user row matching either email *or* username."""
     conn = get_db_connection()
     c = conn.cursor()
     c.execute(
@@ -371,12 +340,6 @@ def get_user_scores(user_id, limit=10):
     return scores
 
 def get_leaderboard(limit=10):
-    """Return the top *users* by their maximum score.
-
-    Only registered users appear since scores are only stored when a
-    user is logged in. The query groups by user and selects the highest
-    score for each, ordering the result descending.
-    """
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("""
@@ -415,9 +378,7 @@ def show_login_ui():
             st.session_state.auth_tab = st.session_state.get("auth_tab", "login")
         
         if st.session_state.user_id is None:
-                # display login/register side by side using columns
             col_login, col_register = st.columns(2)
-            # header-like buttons that switch between login and register
             login_clicked = col_login.button(t("login_tab"), use_container_width=True)
             register_clicked = col_register.button(t("register_tab"), use_container_width=True)
             if login_clicked:
@@ -432,7 +393,7 @@ def show_login_ui():
                 if st.button(t("login_button"), use_container_width=True):
                     if identifier and password:
                         user = get_user_by_identifier(identifier)
-                        if user and user[3] == hash_password(password):  # password è alla posizione 3
+                        if user and user[3] == hash_password(password):
                             st.session_state.user_id = user[0]
                             st.session_state.user_email = user[1]
                             st.session_state.user_username = user[2]
@@ -460,7 +421,6 @@ def show_login_ui():
                     elif reg_password != reg_password_confirm:
                         st.error("Le password non coincidono")
                     else:
-                        # Controlla se email esiste
                         existing = get_user_by_email(reg_email)
                         if existing:
                             st.error(t("register_error"))
@@ -472,30 +432,24 @@ def show_login_ui():
                                 st.rerun()
                             else:
                                 st.error("Errore durante la registrazione. Username potrebbe già esistere.")
-        
         else:
-            # Mostra profilo utente completo
             st.success(f"✅ {t('welcome')}, {st.session_state.user_username}!")
             
-            # Ottieni statistiche utente
             stats = get_user_stats(st.session_state.user_id)
             if stats:
                 username, email, best_score, games_played, created_at, last_game = stats
                 
-                # Metriche principali
                 col1, col2 = st.columns(2)
                 with col1:
                     st.metric(t("best_score"), f"€{best_score:,.0f}")
                 with col2:
                     st.metric(t("games_played"), games_played)
                 
-                # Info account
                 st.caption(f"📧 {email}")
                 st.caption(f"{t('member_since')}: {datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S.%f').strftime('%d/%m/%Y')}")
                 if last_game:
                     st.caption(f"{t('last_game')}: {datetime.strptime(last_game, '%Y-%m-%d %H:%M:%S.%f').strftime('%d/%m/%Y %H:%M')}")
                 
-                # Mostra ultimi punteggi
                 st.divider()
                 st.subheader(t("my_scores"))
                 scores = get_user_scores(st.session_state.user_id, 5)
@@ -510,7 +464,6 @@ def show_login_ui():
                 else:
                     st.info(t("no_scores_yet"))
             
-            # Pulsante logout
             if st.button(t("logout"), use_container_width=True):
                 st.session_state.user_id = None
                 st.session_state.user_email = None
@@ -521,8 +474,6 @@ def show_login_ui():
 def show_leaderboard():
     scores = get_leaderboard(10)
     if scores:
-        # if not logged in, make the heading a clickable button that forces
-        # them to register; the table is still visible.
         if st.session_state.get("user_id"):
             st.subheader(t("leaderboard"))
         else:
@@ -539,14 +490,10 @@ def show_leaderboard():
             })
         st.dataframe(pd.DataFrame(leaderboard_data), use_container_width=True, hide_index=True)
 
-# ===== CONFIGURAZIONE =====
-st.set_page_config(layout="wide")
 
-# some quick CSS tweaks to make the interface a bit more polished
 st.markdown(
     """
     <style>
-    /* highlight the 'next day' button with a distinctive color */
     [data-testid="stButton"][data-key="next_day_button"] > button {
         background-color: #ff6600 !important;
         color: white !important;
@@ -554,19 +501,11 @@ st.markdown(
         font-weight: bold !important;
         border-radius: 8px !important;
     }
-
-    /* slightly larger controls and headers */
     .stButton>button {
         padding: 0.6rem 1rem !important;
     }
-
-    /* add some padding to main containers */
     .css-1d391kg, .css-18e3th9 {padding: 1rem 2rem !important;}
-
-    /* centered title and subtitle */
     .css-1d391kg h1, .css-1d391kg h2 {text-align: center;}
-
-    /* subtle background for sidebar */
     .css-1d391kg .css-1cpxqw2 {background-color: #f9f9f9;}
     </style>
     """,
@@ -583,28 +522,23 @@ if "init" not in st.session_state:
     st.session_state.language = "it"
     st.session_state.game_running = False
     st.session_state.current_date = datetime(2026, 3, 1)
-    # default capacity (modifiable via sidebar)
-    st.session_state.total_rooms = 30
+    st.session_state.total_rooms = 30  # Valore iniziale predefinito
     st.session_state.total_revenue = 0
     st.session_state.user_id = None
     st.session_state.user_email = None
     st.session_state.user_username = None
-    # used by show_login_ui to decide which auth tab is active
     st.session_state.auth_tab = "login"
     
-    # Prezzi
     st.session_state.prices = {}
     d = datetime(2026, 3, 1)
     while d <= datetime(2026, 4, 30):
         st.session_state.prices[d.strftime("%Y-%m-%d")] = 100
         d += timedelta(days=1)
     
-    # Prenotazioni: {stay_date: {booking_date: rooms}}
     st.session_state.bookings = defaultdict(lambda: defaultdict(int))
     st.session_state.daily_occupancy = defaultdict(int)
     st.session_state.daily_revenue = defaultdict(float)
     
-    # Timer
     st.session_state.last_update = time.time()
     st.session_state.elapsed = 0
     st.session_state.paused_elapsed = 0
@@ -614,18 +548,7 @@ if "init" not in st.session_state:
 
 # ===== FUNZIONI =====
 def generate_bookings(booking_date):
-    """Genera prenotazioni per TUTTI i giorni futuri di aprile.
-
-    Il prezzo usato per il calcolo del ricavo (e per la domanda) deve
-    essere quello del **giorno di soggiorno** e non quello della data di
-    prenotazione. In precedenza si leggeva la tariffa associata al
-    `booking_date`, quindi tutte le camere erano vendute a 100€ fino a
-    quando non si arrivava a marzo, indipendentemente dal prezzo che
-    l'utente impostava per il giorno di aprile; ecco perché nei report
-    appariva €700 quando il prezzo era 85€.
-    """
     booking_str = booking_date.strftime("%Y-%m-%d")
-
     total_new_bookings = 0
 
     for day in range(1, 31):
@@ -641,19 +564,14 @@ def generate_bookings(booking_date):
             continue
 
         available = st.session_state.total_rooms - current_occupancy
-
-        # tariffa del giorno di soggiorno
         stay_price = st.session_state.prices.get(stay_str, 100)
 
-        # domanda e fattori basati sulla tariffa del soggiorno
         price_factor = max(0.3, min(1.5, 150 / stay_price))
         days_before = (stay_date - booking_date).days
         time_factor = max(0.5, min(2.0, 15 / max(1, days_before)))
 
         base_demand = 8
         potential_demand = int(base_demand * price_factor * time_factor * random.uniform(0.5, 1.5))
-
-        # rimuovi il vecchio limite di 1–5 camere a favore della disponibilità
         new_bookings = min(potential_demand, available)
 
         if new_bookings > 0:
@@ -686,7 +604,6 @@ def reset_game():
     st.session_state.game_completed = False
 
 # ===== SHOW LOGIN UI =====
-# Selettore lingua nella sidebar
 with st.sidebar:
     language = st.selectbox(
         "Lingua",
@@ -702,30 +619,28 @@ with st.sidebar:
 
 show_login_ui()
 
-# ===== LEADERBOARD IN SIDEBAR =====
 with st.sidebar:
     st.divider()
     show_leaderboard()
 
-# ===== SIDEBAR CONTROLS =====
 with st.sidebar:
     st.divider()
     st.header(t("controls"))
 
-    # allow user to set total number of rooms directly; widget uses
-    # the same key so Streamlit manages session state automatically.
-    # avoid assigning to st.session_state while the widget exists.
-    st.number_input(
+    # Widget per il numero di camere - usa solo il valore da session_state senza impostarlo anche qui
+    rooms_value = st.number_input(
         t("total_rooms"),
         min_value=1,
         max_value=100,
-        value=st.session_state.get("total_rooms", 30),
+        value=st.session_state.total_rooms,
         step=1,
         disabled=st.session_state.game_running,
-        key="total_rooms",
+        key="rooms_input"
     )
+    # Aggiorna session_state solo se il valore è cambiato
+    if rooms_value != st.session_state.total_rooms:
+        st.session_state.total_rooms = rooms_value
 
-    # top row: start and reset buttons side by side
     col_top1, col_top2 = st.columns([1,1])
     with col_top1:
         if st.button(t("start"), use_container_width=True, key="start_button"):
@@ -738,7 +653,7 @@ with st.sidebar:
     with col_top2:
         if st.button(t("reset"), use_container_width=True, key="reset_button"):
             reset_game()
-    # bottom row: next_day spans the combined width of above buttons
+    
     if st.session_state.game_running:
         col_bottom = st.columns([2])[0]
         with col_bottom:
@@ -754,22 +669,18 @@ with st.sidebar:
     st.divider()
     st.subheader(t("stats"))
     st.metric(t("date"), st.session_state.current_date.strftime("%d/%m/%Y"))
-    # show total revenue in statistics (daily figure removed per request)
     st.metric(t("total_revenue"), f"€{st.session_state.total_revenue:,.0f}")
 
     st.divider()
 
     if st.session_state.game_running:
-        # show next-day prompt while game is running
         st.info(t("click_next_day"))
     else:
         st.info(t("click_start"))
 
-# ===== MAIN CONTENT =====
 if not st.session_state.game_running and st.session_state.current_date == datetime(2026, 3, 1) and not st.session_state.game_completed:
     st.info(t("click_start"))
 
-# SAVE SCORE BUTTON
 if st.session_state.game_completed and st.session_state.user_id:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -779,13 +690,7 @@ if st.session_state.game_completed and st.session_state.user_id:
             time.sleep(1)
             st.rerun()
 
-# TABELLA PREZZI
 st.header(t("set_prices"))
-
-# It's smoother to render the entire table with a single editable
-# DataFrame rather than constructing 30 separate columns/widgets. this
-# reduces rerender lag and avoids the interface becoming blurry when the
-# state updates frequently.
 
 giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 
@@ -805,7 +710,6 @@ while d <= datetime(2026, 4, 30):
         occ_str = f"🔴 {occ}/{st.session_state.total_rooms}"
     rev_str = f"€{st.session_state.daily_revenue[date_str]:,.0f}"
 
-    # lock past prices once the game is in April
     locked = is_past and st.session_state.current_date.month == 4
 
     rows.append({
@@ -821,11 +725,9 @@ while d <= datetime(2026, 4, 30):
 
 price_df = pd.DataFrame(rows)
 
-# separate metadata columns so they aren’t shown in the editor
 meta_df = price_df[["_locked", "_key"]].copy()
 display_df = price_df.drop(columns=["_locked", "_key"])
 
-# use the experimental data editor for inline editing of the price column
 edited = st.data_editor(
     display_df,
     column_config={
@@ -839,34 +741,16 @@ edited = st.data_editor(
         "Revenue": st.column_config.TextColumn("📈 Revenue", disabled=True),
         "Data": st.column_config.TextColumn("📅 Data", disabled=True),
         "Giorno": st.column_config.TextColumn("📆 Giorno", disabled=True),
-            # _locked and _key kept in dataframe but hidden below
-        },
-        hide_index=True,
-        use_container_width=True,
+    },
+    hide_index=True,
+    use_container_width=True,
 )
 
-# propagate price changes respecting locks
 for idx, row in edited.iterrows():
     key = meta_df.loc[idx, "_key"]
     if not meta_df.loc[idx, "_locked"]:
         st.session_state.prices[key] = row["Prezzo"]
-occ_data = []
-d = datetime(2026, 4, 1)
-while d <= datetime(2026, 4, 30):
-    date_str = d.strftime("%Y-%m-%d")
-    occ = st.session_state.daily_occupancy[date_str]
-    rev = st.session_state.daily_revenue[date_str]
-    
-    occ_data.append({
-        "Data": d.strftime("%d %b"),
-        "Camere": f"{occ}/{st.session_state.total_rooms}",
-        "Occupazione": f"{(occ/st.session_state.total_rooms)*100:.0f}%",
-        "Revenue": f"€{rev:,.0f}"
-    })
-    d += timedelta(days=1)
 
-
-# DETTAGLI PRENOTAZIONI
 st.header(t("booking_details"))
 
 april_days = []
@@ -887,8 +771,6 @@ if april_days:
     
     st.markdown(f"**{t('booking_from')} {selected}**")
 
-    # compute pick-up for this specific stay date (rooms booked for this stay
-    # aggregated by booking date)
     pickup_data = {}
     for book_date, rooms in st.session_state.bookings[selected].items():
         pickup_data[book_date] = pickup_data.get(book_date, 0) + rooms
@@ -944,16 +826,14 @@ else:
         
         occupied_days = sum(1 for v in st.session_state.daily_occupancy.values() if v > 0)
         if occupied_days > 0:
-            st.caption(f"📅 Giorni con prenotazioni: {occupied_days}/30")  # days in April (fixed)
+            st.caption(f"📅 Giorni con prenotazioni: {occupied_days}/30")
         
         st.caption(f"📍 Data corrente: {st.session_state.current_date.strftime('%d/%m/%Y')}")
 
 st.divider()
 
-#STATO CORRENTE
 st.header(t("current_state"))
 
-# Calcola metriche aggiornate
 total_occ = sum(st.session_state.daily_occupancy.values())
 max_possible = st.session_state.total_rooms * 30
 occupancy_percentage = (total_occ / max_possible * 100) if max_possible > 0 else 0
@@ -963,13 +843,9 @@ if st.session_state.current_date <= datetime(2026, 4, 30):
 else:
     days_left = 0
 
-# Mostra metriche
-# includiamo anche il revenue del giorno corrente per chiarezza
 current_day_str = st.session_state.current_date.strftime("%Y-%m-%d")
 day_rev = st.session_state.daily_revenue.get(current_day_str, 0)
 
-# scelta dinamica del numero di colonne: se non c'è revenue giornaliero
-# evitiamo di mostrare la colonna a €0, il che semplifica la vista.
 if day_rev > 0:
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric(t("current_date"), st.session_state.current_date.strftime("%d %b %Y"))
@@ -978,43 +854,31 @@ if day_rev > 0:
     c4.metric(t("daily_revenue"), f"€{day_rev:,.0f}")
     c5.metric(t("total_revenue"), f"€{st.session_state.total_revenue:,.0f}")
 else:
-    # no revenue today: mostriamo solo quattro colonne
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(t("current_date"), st.session_state.current_date.strftime("%d %b %Y"))
     c2.metric(t("days_remaining"), max(0, days_left))
     c3.metric(t("total_booked"), f"{total_occ}/{max_possible} ({occupancy_percentage:.1f}%)")
     c4.metric(t("total_revenue"), f"€{st.session_state.total_revenue:,.0f}")
-  # progress bar: mostra avanzamento dalla data iniziale fino al 30 aprile
-total_days = 61  # dal 1 marzo al 30 aprile
+
+total_days = 61
 days_passed = (st.session_state.current_date - datetime(2026, 3, 1)).days
 progress = min(1, days_passed / total_days)
-# Mostra ultime prenotazioni se disponibili
+st.progress(progress, text=f"Avanzamento: {days_passed}/{total_days} giorni")
+
 if total_occ > 0:
     st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili")
 
-# GAME OVER
 if st.session_state.current_date > datetime(2026, 4, 30):
     st.balloons()
     st.success(t("game_end").format(revenue=st.session_state.total_revenue))
     
-    # Statistiche finali
     col1, col2, col3 = st.columns(3)
     col1.metric("Occupazione media", f"{occupancy_percentage:.1f}%")
     
     avg_price = st.session_state.total_revenue / total_occ if total_occ > 0 else 0
     col2.metric("Prezzo medio", f"€{avg_price:.0f}")
     
-    # Trova il giorno più prenotato
     if st.session_state.daily_occupancy:
         best_day_str = max(st.session_state.daily_occupancy.items(), key=lambda x: x[1])[0]
         best_day = datetime.strptime(best_day_str, "%Y-%m-%d").strftime("%d %b")
         col3.metric("Giorno più pieno", best_day)
-
-# Auto-refresh per mantenere il countdown aggiornato
-# (disabilitato: la versione precedente ricaricava continuamente la pagina
-# mentre il gioco era in corso, rendendo l'interfaccia lenta e "bloccata".
-# Gli aggiornamenti ora avvengono solo in risposta ai pulsanti Start/Avanti/Reset
-# o ad altre interazioni dell'utente.)
-# if st.session_state.game_running:
-#     time.sleep(0.1)
-#     st.rerun()
