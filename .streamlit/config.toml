@@ -3,7 +3,7 @@ showErrorDetails = true
 toolbarMode = "minimal"
 
 [server]
-port = 8505
+port = 8501
 enableXsrfProtection = false
 enableCORS = false
 baseUrlPath = ""
