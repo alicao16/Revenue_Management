@@ -772,7 +772,8 @@ for date_str in st.session_state.bookings:
             april_days.append(date_str)
     except:
         continue
-
+        
+selected = None
 if april_days:
     selected = st.selectbox(
         t("select_stay_day"), 
