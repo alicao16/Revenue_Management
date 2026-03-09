@@ -762,62 +762,55 @@ for idx, row in edited.iterrows():
     if not meta_df.loc[idx, "_locked"]:
         st.session_state.prices[key] = row["Prezzo"]
 
+# ===== PICKUP CHART (uses only existing bookings, no new bookings generated) =====
 st.header(t("booking_details"))
 
-april_days = []
-for date_str in st.session_state.bookings:
-    try:
-        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-        if date_obj.month == 4 and sum(st.session_state.bookings[date_str].values()) > 0:
-            april_days.append(date_str)
-    except:
-        continue
-        
+# Filter April days with bookings
+april_days = [
+    date_str for date_str, bookings in st.session_state.bookings.items()
+    if datetime.strptime(date_str, "%Y-%m-%d").month == 4 and sum(bookings.values()) > 0
+]
+
 selected = None
 if april_days:
     selected = st.selectbox(
-        t("select_stay_day"), 
+        t("select_stay_day"),
         sorted(april_days),
         format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y")
     )
     
     st.markdown(f"**{t('booking_from')} {selected}**")
 
-    pickup_data = {}
-for book_date, rooms in st.session_state.bookings[selected].items():
-    pickup_data[book_date] = pickup_data.get(book_date, 0) + rooms
+if selected and selected in st.session_state.bookings:
+    # Use only actual bookings for the selected stay day
+    pickup_data = st.session_state.bookings[selected]
 
-# Convert to cumulative pick-up
-pickup_data = dict(sorted(pickup_data.items()))
-cumulative = 0
-for k in pickup_data:
-    cumulative += pickup_data[k]
-    pickup_data[k] = cumulative
-    if pickup_data:
-        df_pickup = pd.DataFrame(
-            sorted(pickup_data.items()),
-            columns=[t("date"), t("rooms")]
-        )
-        st.subheader(t("pickup"))
-        df_pickup[t("date")] = pd.to_datetime(df_pickup[t("date")])
-        df_pickup = df_pickup.set_index(t("date"))
-        st.line_chart(df_pickup)
+    # Convert to DataFrame for plotting
+    df_pickup = pd.DataFrame(
+        sorted(pickup_data.items()), columns=[t("date"), t("rooms")]
+    )
 
+    # Compute cumulative bookings for the chart
+    df_pickup["Cumulative"] = df_pickup[t("rooms")].cumsum()
+
+    st.subheader(t("pickup"))
+    st.line_chart(df_pickup.set_index(t("date"))["Cumulative"])
+
+    # Optional: show detailed booking table
     details = []
     total_rooms_day = 0
     total_rev_day = 0
-    
-    for book_date, rooms in sorted(st.session_state.bookings[selected].items()):
+    for book_date, rooms in sorted(pickup_data.items()):
         if rooms > 0:
             price = st.session_state.prices.get(book_date, 100)
             revenue = rooms * price
             total_rooms_day += rooms
             total_rev_day += revenue
-            
+
             book_dt = datetime.strptime(book_date, "%Y-%m-%d")
             stay_dt = datetime.strptime(selected, "%Y-%m-%d")
             days_before = (stay_dt - book_dt).days
-            
+
             details.append({
                 "Data prenotazione": book_dt.strftime("%d %b"),
                 "Giorni prima": days_before,
@@ -825,15 +818,14 @@ for k in pickup_data:
                 "Prezzo": f"€{price}",
                 "Revenue": f"€{revenue:,.0f}"
             })
-    
+
     if details:
         st.dataframe(pd.DataFrame(details), use_container_width=True, hide_index=True)
-        
         col1, col2 = st.columns(2)
         col1.metric(f"📊 Totale camere prenotate", f"{total_rooms_day}")
         col2.metric(f"💰 Revenue totale giornaliero", f"€{total_rev_day:,.0f}")
-    else:
-        st.info(f"Nessun dettaglio per {selected}")
+else:
+    st.info(t("no_bookings"))
 else:
     st.info(t("no_bookings"))
     if st.session_state.game_running:
