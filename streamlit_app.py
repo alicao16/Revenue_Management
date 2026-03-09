@@ -569,7 +569,17 @@ def generate_bookings(booking_date):
 
         # Logistic demand curve
         price_0 = 120      # inflection price (50% demand)
-        alpha = 0.05       # price sensitivity
+        alpha = st.session_state.get("alpha", 0.05)# price sensitivity
+        # Slider per elasticità (alpha)
+        alpha_value = st.slider(
+        "📈 Elasticità prezzo (alpha)",
+        min_value=0.01,
+        max_value=0.2,
+        value=0.05,   # valore di default attuale
+        step=0.01,
+        help="Maggiore alpha → maggiore sensibilità della domanda al prezzo"
+)
+st.session_state.alpha = alpha_value
 
         demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
 
