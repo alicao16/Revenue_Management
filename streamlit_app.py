@@ -1,3 +1,4 @@
+import math
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -566,20 +567,30 @@ def generate_bookings(booking_date):
         available = st.session_state.total_rooms - current_occupancy
         stay_price = st.session_state.prices.get(stay_str, 100)
 
-        price_factor = max(0.3, min(1.5, 150 / stay_price))
-        days_before = (stay_date - booking_date).days
-        time_factor = max(0.5, min(2.0, 15 / max(1, days_before)))
+        # Logistic demand curve
+        price_0 = 120      # inflection price (50% demand)
+        alpha = 0.05       # price sensitivity
 
-        base_demand = 8
-        potential_demand = int(base_demand * price_factor * time_factor * random.uniform(0.5, 1.5))
+        demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
+
+        expected_total_demand = st.session_state.total_rooms * demand_fraction
+
+        # Booking window effect (closer dates book faster)
+        days_before = (stay_date - booking_date).days
+        time_factor = max(0.5, min(2.0, 20 / max(1, days_before)))
+
+        potential_demand = int(expected_total_demand * time_factor * random.uniform(0.6, 1.4))
+
         new_bookings = min(potential_demand, available)
 
         if new_bookings > 0:
             st.session_state.bookings[stay_str][booking_str] += new_bookings
             st.session_state.daily_occupancy[stay_str] += new_bookings
+
             revenue = new_bookings * stay_price
             st.session_state.daily_revenue[stay_str] += revenue
             st.session_state.total_revenue += revenue
+
             total_new_bookings += new_bookings
 
     return total_new_bookings
@@ -772,8 +783,15 @@ if april_days:
     st.markdown(f"**{t('booking_from')} {selected}**")
 
     pickup_data = {}
-    for book_date, rooms in st.session_state.bookings[selected].items():
-        pickup_data[book_date] = pickup_data.get(book_date, 0) + rooms
+for book_date, rooms in st.session_state.bookings[selected].items():
+    pickup_data[book_date] = pickup_data.get(book_date, 0) + rooms
+
+# Convert to cumulative pick-up
+pickup_data = dict(sorted(pickup_data.items()))
+cumulative = 0
+for k in pickup_data:
+    cumulative += pickup_data[k]
+    pickup_data[k] = cumulative
     if pickup_data:
         df_pickup = pd.DataFrame(
             sorted(pickup_data.items()),
