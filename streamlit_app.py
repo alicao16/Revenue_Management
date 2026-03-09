@@ -826,8 +826,7 @@ if selected and selected in st.session_state.bookings:
         col2.metric(f"💰 Revenue totale giornaliero", f"€{total_rev_day:,.0f}")
 else:
     st.info(t("no_bookings"))
-else:
-    st.info(t("no_bookings"))
+    
     if st.session_state.game_running:
         st.caption(t("generating"))
         
