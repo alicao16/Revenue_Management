@@ -755,10 +755,10 @@ st.metric(t("total_revenue"), f"€{st.session_state.total_revenue:,.0f}")
 
 st.divider()
 
-    if st.session_state.game_running:
-        st.info(t("click_next_day"))
-    else:
-        st.info(t("click_start"))
+if st.session_state.game_running:
+    st.info(t("click_next_day"))
+else:
+    st.info(t("click_start"))
 
 if not st.session_state.game_running and st.session_state.current_date == datetime(2026, 3, 1) and not st.session_state.game_completed:
     st.info(t("click_start"))
