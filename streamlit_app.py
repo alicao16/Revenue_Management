@@ -866,38 +866,39 @@ draw_calendar(st.session_state.calendar_month)
 # ===== PICKUP CHART (uses only existing bookings, no new bookings generated) =====
 st.header(t("booking_details"))
 
-# Filter April days with bookings
-april_days = [
+# usa il mese selezionato nel calendario
+selected_month = st.session_state.calendar_month
+
+# giorni del mese selezionato con prenotazioni
+month_days = [
     date_str for date_str, bookings in st.session_state.bookings.items()
-    if datetime.strptime(date_str, "%Y-%m-%d").month == 4 and sum(bookings.values()) > 0
+    if datetime.strptime(date_str, "%Y-%m-%d").month == selected_month
+       and sum(bookings.values()) > 0
 ]
 
 selected = None
-if april_days:
+if month_days:
     selected = st.selectbox(
         t("select_stay_day"),
-        sorted(april_days),
+        sorted(month_days),
         format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y")
     )
-    
+
     st.markdown(f"**{t('booking_from')} {selected}**")
 
 if selected and selected in st.session_state.bookings:
-    # Use only actual bookings for the selected stay day
+    # bookings per il giorno selezionato
     pickup_data = st.session_state.bookings[selected]
 
-    # Convert to DataFrame for plotting
     df_pickup = pd.DataFrame(
         sorted(pickup_data.items()), columns=[t("date"), t("rooms")]
     )
-
-    # Compute cumulative bookings for the chart
     df_pickup["Cumulative"] = df_pickup[t("rooms")].cumsum()
 
     st.subheader(t("pickup"))
     st.line_chart(df_pickup.set_index(t("date"))["Cumulative"])
 
-    # Optional: show detailed booking table
+    # tabella dettagli
     details = []
     total_rooms_day = 0
     total_rev_day = 0
@@ -927,10 +928,9 @@ if selected and selected in st.session_state.bookings:
         col2.metric(f"💰 Revenue totale giornaliero", f"€{total_rev_day:,.0f}")
 else:
     st.info(t("no_bookings"))
-    
+
     if st.session_state.game_running:
         st.caption(t("generating"))
-        
         total_bookings = sum(sum(v.values()) for v in st.session_state.bookings.values())
         if total_bookings > 0:
             st.caption(f"📊 Totale prenotazioni: {total_bookings}")
