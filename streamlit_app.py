@@ -549,22 +549,22 @@ if "init" not in st.session_state:
 
 # ===== FUNZIONI =====
 def generate_bookings(booking_date):
-
+    """Genera prenotazioni a partire dalla data di booking, rispettando i limiti di camere disponibili"""
     booking_str = booking_date.strftime("%Y-%m-%d")
     total_new_bookings = 0
 
+    # Simuliamo soggiorni dal 1 aprile al 31 maggio
     stay_date = datetime(2026, 4, 1)
 
     while stay_date <= datetime(2026, 5, 31):
-
         if stay_date < booking_date:
             stay_date += timedelta(days=1)
             continue
 
         stay_str = stay_date.strftime("%Y-%m-%d")
-
         current_occupancy = st.session_state.daily_occupancy[stay_str]
 
+        # Skip se già tutto occupato
         if current_occupancy >= st.session_state.total_rooms:
             stay_date += timedelta(days=1)
             continue
@@ -575,40 +575,30 @@ def generate_bookings(booking_date):
         # ===== PRICE ELASTICITY =====
         price_0 = 120
         alpha = st.session_state.get("alpha", 0.02)
-
         demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
-
         expected_total_demand = st.session_state.total_rooms * demand_fraction * 0.25
 
         # ===== BOOKING WINDOW =====
-        days_before = (stay_date - booking_date).days
-        time_factor = max(0.4, min(2.5, 20 / max(1, days_before)))
+        days_before = max(1, (stay_date - booking_date).days)
+        time_factor = max(0.4, min(2.5, 20 / days_before))
 
         # ===== SEASONALITY =====
-        if stay_date.month == 4:
-            season_factor = st.session_state.get("season_april", 1.0)
-        else:
-            season_factor = st.session_state.get("season_may", 1.2)
-
-        potential_demand = int(
-            expected_total_demand
-            * time_factor
-            * season_factor
-            * random.uniform(0.6, 1.4)
+        season_factor = st.session_state.get(
+            "season_april" if stay_date.month == 4 else "season_may", 1.0
         )
 
+        # domanda potenziale
+        potential_demand = int(expected_total_demand * time_factor * season_factor * random.uniform(0.6, 1.4))
+
+        # Non superare mai le camere disponibili
         new_bookings = min(potential_demand, available)
 
         if new_bookings > 0:
-
             st.session_state.bookings[stay_str][booking_str] += new_bookings
             st.session_state.daily_occupancy[stay_str] += new_bookings
-
             revenue = new_bookings * stay_price
-
             st.session_state.daily_revenue[stay_str] += revenue
             st.session_state.total_revenue += revenue
-
             total_new_bookings += new_bookings
 
         stay_date += timedelta(days=1)
@@ -622,12 +612,29 @@ def generate_bookings(booking_date):
     demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
 
     expected_total_demand = st.session_state.total_rooms * demand_fraction
-
+    
     # Booking window effect (closer dates book faster)
-    days_before = (stay_date - booking_date).days
-    time_factor = max(0.5, min(2.0, 20 / max(1, days_before)))
+    days_before = max(1, (stay_date - booking_date).days)
 
-    potential_demand = int(expected_total_demand * time_factor * random.uniform(0.6, 1.4))
+    # booking pace curve (logistic)
+    pickup_curve = 1 / (1 + math.exp((days_before - 20) / 6))
+
+    # far dates book very slowly
+    daily_share = 0.03 + 0.15 * pickup_curve
+
+    # remaining demand still available for that stay date
+    remaining_capacity = available / st.session_state.total_rooms
+
+    # demand also slows when occupancy increases
+    inventory_pressure = max(0.2, remaining_capacity)
+
+    potential_demand = int(
+        expected_total_demand
+        * daily_share
+        * inventory_pressure
+        * season_factor
+        * random.uniform(0.8, 1.2)
+)
 
     new_bookings = min(potential_demand, available)
 
