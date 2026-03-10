@@ -682,11 +682,9 @@ with st.sidebar:
     st.divider()
     show_leaderboard()
 
-with st.sidebar:
     st.divider()
     st.header(t("controls"))
 
-    # Widget per il numero di camere - usa solo il valore da session_state senza impostarlo anche qui
     rooms_value = st.number_input(
         t("total_rooms"),
         min_value=1,
@@ -695,27 +693,28 @@ with st.sidebar:
         step=1,
         disabled=st.session_state.game_running,
         key="rooms_input"
-      )
-st.subheader("📅 Seasonality")
+    )
 
-season_april = st.slider(
-    "April demand",
-    min_value=0.5,
-    max_value=2.0,
-    value=st.session_state.get("season_april", 1.0),
-    step=0.1
-)
+    st.subheader("📅 Seasonality")
 
-season_may = st.slider(
-    "May demand",
-    min_value=0.5,
-    max_value=2.0,
-    value=st.session_state.get("season_may", 1.2),
-    step=0.1
-)
+    season_april = st.slider(
+        "April demand",
+        min_value=0.5,
+        max_value=2.0,
+        value=st.session_state.get("season_april", 1.0),
+        step=0.1
+    )
 
-st.session_state.season_april = season_april
-st.session_state.season_may = season_may
+    season_may = st.slider(
+        "May demand",
+        min_value=0.5,
+        max_value=2.0,
+        value=st.session_state.get("season_may", 1.2),
+        step=0.1
+    )
+
+    st.session_state.season_april = season_april
+    st.session_state.season_may = season_may
 
 
     
