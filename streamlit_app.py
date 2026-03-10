@@ -532,7 +532,7 @@ if "init" not in st.session_state:
     
     st.session_state.prices = {}
     d = datetime(2026, 3, 1)
-    while d <= datetime(2026, 4, 30):
+    while d <= datetime(2026, 5, 31):
         st.session_state.prices[d.strftime("%Y-%m-%d")] = 100
         d += timedelta(days=1)
     
@@ -644,7 +644,7 @@ def generate_bookings(booking_date):
     return total_new_bookings
 
 def advance_day():
-    if st.session_state.current_date <= datetime(2026, 4, 30):
+    if st.session_state.current_date <= datetime(2026, 5, 31):
         new_bookings = generate_bookings(st.session_state.current_date)
         st.session_state.current_date += timedelta(days=1)
         return new_bookings
@@ -778,7 +778,7 @@ giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 
 rows = []
 d = datetime(2026, 4, 1)
-while d <= datetime(2026, 4, 30):
+while d <= datetime(2026, 5, 31):
     date_str = d.strftime("%Y-%m-%d")
     is_past = d < st.session_state.current_date
 
