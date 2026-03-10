@@ -560,7 +560,7 @@ def generate_bookings(booking_date):
         if stay_date < booking_date:
             stay_date += timedelta(days=1)
             continue
-
+            
         stay_str = stay_date.strftime("%Y-%m-%d")
         current_occupancy = st.session_state.daily_occupancy[stay_str]
 
@@ -594,24 +594,24 @@ def generate_bookings(booking_date):
         new_bookings = min(potential_demand, available)
 
         if new_bookings > 0:
-            st.session_state.bookings[stay_str][booking_str] += new_bookings
+            # registra prenotazioni per giorno di soggiorno
+            st.session_state.bookings[stay_str][booking_str] = {
+                "rooms": new_bookings,
+                "price": stay_price
+            }
             st.session_state.daily_occupancy[stay_str] += new_bookings
             revenue = new_bookings * stay_price
             st.session_state.daily_revenue[stay_str] += revenue
             st.session_state.total_revenue += revenue
             total_new_bookings += new_bookings
 
+            # ✅ aggiorna pick-up giornaliero (prenotazioni ricevute oggi)
+            st.session_state.daily_pickup[booking_str] += new_bookings
+
         stay_date += timedelta(days=1)
 
     return total_new_bookings
 
-       # Logistic demand curve
-    price_0 = 120  # inflection price (50% demand)
-    alpha = st.session_state.get("alpha", 0.05)  # usare il valore dello slider
-
-    demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
-
-    expected_total_demand = st.session_state.total_rooms * demand_fraction
     
     # Booking window effect (closer dates book faster)
     days_before = max(1, (stay_date - booking_date).days)
@@ -906,7 +906,10 @@ if selected and selected in st.session_state.bookings:
     details = []
     total_rooms_day = 0
     total_rev_day = 0
-    for book_date, rooms in sorted(pickup_data.items()):
+    for book_date, data in sorted(pickup_data.items()):
+    
+    rooms = data["rooms"]
+    price = data["price"]
         if rooms > 0:
             price = st.session_state.prices.get(book_date, 100)
             revenue = rooms * price
