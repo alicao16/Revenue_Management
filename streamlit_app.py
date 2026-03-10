@@ -837,7 +837,7 @@ def draw_calendar(month):
                         min_value=10,
                         max_value=500,
                         step=5,
-                        value=st.session_state.prices(date_str,100),
+                        value=st.session_state.prices.get(date_str,100),
                         key=f"price_{date_str}"
                     )
 
