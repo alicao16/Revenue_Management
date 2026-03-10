@@ -695,8 +695,8 @@ with st.sidebar:
         step=1,
         disabled=st.session_state.game_running,
         key="rooms_input"
-    )
-   st.subheader("📅 Seasonality")
+      )
+       st.subheader("📅 Seasonality")
 
 season_april = st.slider(
     "April demand",
