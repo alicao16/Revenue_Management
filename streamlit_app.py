@@ -719,11 +719,11 @@ st.session_state.season_may = season_may
 
 
     
-    # Aggiorna session_state solo se il valore è cambiato
-    if rooms_value != st.session_state.total_rooms:
+# Aggiorna session_state solo se il valore è cambiato
+if rooms_value != st.session_state.total_rooms:
         st.session_state.total_rooms = rooms_value
 
-    col_top1, col_top2 = st.columns([1,1])
+col_top1, col_top2 = st.columns([1,1])
     with col_top1:
         if st.button(t("start"), use_container_width=True, key="start_button"):
             st.session_state.game_running = True
