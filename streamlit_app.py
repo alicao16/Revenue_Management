@@ -174,7 +174,7 @@ TRANSLATIONS = {
         "booking_from": "Bookings from",
         "total_for_day": "Daily total",
         "rooms": "rooms",
-        "april_only": "📅 April is game time! Set daily prices, monitor occupancy and conquer the leaderboard. Bookings begin in March but stays take place in April to simulate a hotel already in operation.",
+        "april_only": "📅 April is game time! Set daily prices, monitor occupancy and conquer the leaderboard. Bookings begin in March but stays take place in April and May to simulate a hotel already in operation.",
         "instructions": "Set daily prices and aim to maximize revenue – good luck, future economists!",
         "login": "🔐 Access Your Profile",
         "email": "📧 Email",
