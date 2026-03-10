@@ -1,4 +1,4 @@
-import math 
+import math
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -539,6 +539,7 @@ if "init" not in st.session_state:
     st.session_state.bookings = defaultdict(lambda: defaultdict(int))
     st.session_state.daily_occupancy = defaultdict(int)
     st.session_state.daily_revenue = defaultdict(float)
+    st.session_state.daily_pickup = defaultdict(int)  # Added missing initialization
     
     st.session_state.last_update = time.time()
     st.session_state.elapsed = 0
@@ -612,44 +613,6 @@ def generate_bookings(booking_date):
 
     return total_new_bookings
 
-    
-    # Booking window effect (closer dates book faster)
-    days_before = max(1, (stay_date - booking_date).days)
-
-    # booking pace curve (logistic)
-    pickup_curve = 1 / (1 + math.exp((days_before - 20) / 6))
-
-    # far dates book very slowly
-    daily_share = 0.03 + 0.15 * pickup_curve
-
-    # remaining demand still available for that stay date
-    remaining_capacity = available / st.session_state.total_rooms
-
-    # demand also slows when occupancy increases
-    inventory_pressure = max(0.2, remaining_capacity)
-
-    potential_demand = int(
-        expected_total_demand
-        * daily_share
-        * inventory_pressure
-        * season_factor
-        * random.uniform(0.8, 1.2)
-)
-
-    new_bookings = min(potential_demand, available)
-
-    if new_bookings > 0:
-        st.session_state.bookings[stay_str][booking_str] += new_bookings
-        st.session_state.daily_occupancy[stay_str] += new_bookings
-
-        revenue = new_bookings * stay_price
-        st.session_state.daily_revenue[stay_str] += revenue
-        st.session_state.total_revenue += revenue
-
-        total_new_bookings += new_bookings
-
-    return total_new_bookings
-
 def advance_day():
     if st.session_state.current_date <= datetime(2026, 5, 31):
         new_bookings = generate_bookings(st.session_state.current_date)
@@ -664,6 +627,7 @@ def reset_game():
     st.session_state.bookings = defaultdict(lambda: defaultdict(int))
     st.session_state.daily_occupancy = defaultdict(int)
     st.session_state.daily_revenue = defaultdict(float)
+    st.session_state.daily_pickup = defaultdict(int)  # Added missing initialization
     st.session_state.last_update = time.time()
     st.session_state.elapsed = 0
     st.session_state.paused_elapsed = 0
@@ -894,8 +858,17 @@ if selected and selected in st.session_state.bookings:
     # bookings per il giorno selezionato
     pickup_data = st.session_state.bookings[selected]
 
+    # Create DataFrame for pickup data
+    pickup_items = []
+    for book_date, data in pickup_data.items():
+        if isinstance(data, dict):
+            rooms = data["rooms"]
+        else:
+            rooms = data
+        pickup_items.append((book_date, rooms))
+    
     df_pickup = pd.DataFrame(
-        sorted(pickup_data.items()), columns=[t("date"), t("rooms")]
+        sorted(pickup_items), columns=[t("date"), t("rooms")]
     )
     df_pickup["Cumulative"] = df_pickup[t("rooms")].cumsum()
 
@@ -907,11 +880,14 @@ if selected and selected in st.session_state.bookings:
     total_rooms_day = 0
     total_rev_day = 0
     for book_date, data in sorted(pickup_data.items()):
-    
-    rooms = data["rooms"]
-    price = data["price"]
-        if rooms > 0:
+        if isinstance(data, dict):
+            rooms = data["rooms"]
+            price = data["price"]
+        else:
+            rooms = data
             price = st.session_state.prices.get(book_date, 100)
+        
+        if rooms > 0:
             revenue = rooms * price
             total_rooms_day += rooms
             total_rev_day += revenue
