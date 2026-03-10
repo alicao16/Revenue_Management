@@ -623,23 +623,23 @@ def generate_bookings(booking_date):
 
     expected_total_demand = st.session_state.total_rooms * demand_fraction
 
-        # Booking window effect (closer dates book faster)
-        days_before = (stay_date - booking_date).days
-        time_factor = max(0.5, min(2.0, 20 / max(1, days_before)))
+    # Booking window effect (closer dates book faster)
+    days_before = (stay_date - booking_date).days
+    time_factor = max(0.5, min(2.0, 20 / max(1, days_before)))
 
-        potential_demand = int(expected_total_demand * time_factor * random.uniform(0.6, 1.4))
+    potential_demand = int(expected_total_demand * time_factor * random.uniform(0.6, 1.4))
 
-        new_bookings = min(potential_demand, available)
+    new_bookings = min(potential_demand, available)
 
-        if new_bookings > 0:
-            st.session_state.bookings[stay_str][booking_str] += new_bookings
-            st.session_state.daily_occupancy[stay_str] += new_bookings
+    if new_bookings > 0:
+        st.session_state.bookings[stay_str][booking_str] += new_bookings
+        st.session_state.daily_occupancy[stay_str] += new_bookings
 
-            revenue = new_bookings * stay_price
-            st.session_state.daily_revenue[stay_str] += revenue
-            st.session_state.total_revenue += revenue
+        revenue = new_bookings * stay_price
+        st.session_state.daily_revenue[stay_str] += revenue
+        st.session_state.total_revenue += revenue
 
-            total_new_bookings += new_bookings
+        total_new_bookings += new_bookings
 
     return total_new_bookings
 
