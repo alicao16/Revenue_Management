@@ -747,17 +747,16 @@ giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 
 # mese visualizzato
 if "calendar_month" not in st.session_state:
-    st.session_state.calendar_month = 4
+    st.session_state.calendar_month = 3  # Start with March
 
 
 def change_month(delta):
     new_month = st.session_state.calendar_month + delta
-    if 4 <= new_month <= 5:
+    if 3 <= new_month <= 5:  # Include March, April, May
         st.session_state.calendar_month = new_month
 
 
 def draw_calendar(month):
-
     year = 2026
     first_day = datetime(year, month, 1)
 
@@ -772,7 +771,8 @@ def draw_calendar(month):
             change_month(-1)
 
     with col2:
-        st.subheader(first_day.strftime("%B %Y").upper())
+        month_names = {3: "MARZO 2026", 4: "APRILE 2026", 5: "MAGGIO 2026"}
+        st.subheader(month_names.get(month, first_day.strftime("%B %Y").upper()))
 
     with col3:
         if st.button("➡️", key="next_month"):
@@ -786,39 +786,43 @@ def draw_calendar(month):
     d = start
 
     while True:
-
         cols = st.columns(7)
 
         for i in range(7):
-
             with cols[i]:
-
                 if d.month == month:
-
                     date_str = d.strftime("%Y-%m-%d")
-
-                    occ = st.session_state.daily_occupancy.get(date_str,0)
+                    occ = st.session_state.daily_occupancy.get(date_str, 0)
                     rooms = st.session_state.total_rooms
 
-                    price = st.number_input(
-                        f"{d.day}",
-                        min_value=10,
-                        max_value=500,
-                        step=5,
-                        value=st.session_state.prices.get(date_str,100),
-                        key=f"price_{date_str}"
-                    )
+                    if month == 3:  # March - view only, no price input
+                        st.markdown(f"**{d.day}**")
+                        # Occupazione
+                        if occ == 0:
+                            st.caption(f"🟢 {occ}/{rooms}")
+                        elif occ < rooms:
+                            st.caption(f"🟡 {occ}/{rooms}")
+                        else:
+                            st.caption(f"🔴 {occ}/{rooms}")
+                        st.caption("📅 solo pickup")
+                    else:  # April & May - price input
+                        price = st.number_input(
+                            f"{d.day}",
+                            min_value=10,
+                            max_value=500,
+                            step=5,
+                            value=st.session_state.prices.get(date_str, 100),
+                            key=f"price_{date_str}"
+                        )
+                        st.session_state.prices[date_str] = price
 
-                    st.session_state.prices[date_str] = price
-
-                    # occupazione
-                    if occ == 0:
-                        st.caption(f"🟢 {occ}/{rooms}")
-                    elif occ < rooms:
-                        st.caption(f"🟡 {occ}/{rooms}")
-                    else:
-                        st.caption(f"🔴 {occ}/{rooms}")
-
+                        # occupazione
+                        if occ == 0:
+                            st.caption(f"🟢 {occ}/{rooms}")
+                        elif occ < rooms:
+                            st.caption(f"🟡 {occ}/{rooms}")
+                        else:
+                            st.caption(f"🔴 {occ}/{rooms}")
                 else:
                     st.write("")
 
@@ -831,20 +835,20 @@ def draw_calendar(month):
 draw_calendar(st.session_state.calendar_month)
 
 
-# ===== PICKUP CHART (uses only existing bookings, no new bookings generated) =====
+# ===== PICKUP CHART =====
 st.header(t("booking_details"))
 
-# usa il mese selezionato nel calendario
+# Usa il mese selezionato nel calendario (incluso marzo)
 selected_month = st.session_state.calendar_month
 
-# giorni del mese selezionato con prenotazioni
-month_days = []
+# Crea una lista di date di soggiorno (aprile-maggio) che hanno prenotazioni
+stay_dates_with_bookings = []
 for date_str, bookings in st.session_state.bookings.items():
     try:
-        # Check if the date string can be parsed and matches the selected month
         date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-        if date_obj.month == selected_month:
-            # Check if there are any bookings for this date
+        # Mostra solo date di soggiorno (aprile-maggio) che hanno prenotazioni
+        if date_obj.month in [4, 5]:
+            # Verifica se ci sono prenotazioni
             has_bookings = False
             if isinstance(bookings, dict):
                 for value in bookings.values():
@@ -859,26 +863,26 @@ for date_str, bookings in st.session_state.bookings.items():
                 has_bookings = True
             
             if has_bookings:
-                month_days.append(date_str)
+                stay_dates_with_bookings.append(date_str)
     except (ValueError, TypeError):
-        # Skip if date_str is not valid
         continue
 
-selected = None
-if month_days:
-    selected = st.selectbox(
+selected_stay_date = None
+if stay_dates_with_bookings:
+    selected_stay_date = st.selectbox(
         t("select_stay_day"),
-        sorted(month_days),
+        sorted(stay_dates_with_bookings),
         format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y")
     )
+    
+    if selected_stay_date:
+        st.markdown(f"**{t('booking_from')} {datetime.strptime(selected_stay_date, '%Y-%m-%d').strftime('%d %b %Y')}**")
 
-    st.markdown(f"**{t('booking_from')} {selected}**")
+if selected_stay_date and selected_stay_date in st.session_state.bookings:
+    # bookings per il giorno di soggiorno selezionato
+    pickup_data = st.session_state.bookings[selected_stay_date]
 
-if selected and selected in st.session_state.bookings:
-    # bookings per il giorno selezionato
-    pickup_data = st.session_state.bookings[selected]
-
-    # Create DataFrame for pickup data
+    # Crea DataFrame per i dati di pickup
     pickup_items = []
     if isinstance(pickup_data, dict):
         for book_date, data in sorted(pickup_data.items()):
@@ -887,11 +891,16 @@ if selected and selected in st.session_state.bookings:
             else:
                 rooms = data
             if rooms > 0:
-                pickup_items.append((book_date, rooms))
+                try:
+                    book_dt = datetime.strptime(book_date, "%Y-%m-%d")
+                    # Mostra solo prenotazioni da marzo in poi
+                    if book_dt.month >= 3:
+                        pickup_items.append((book_dt.strftime("%d %b"), rooms))
+                except (ValueError, TypeError):
+                    pickup_items.append((book_date, rooms))
     else:
-        # If it's just an integer (old format), create a single entry
         if pickup_data > 0:
-            pickup_items.append(("Unknown", pickup_data))
+            pickup_items.append(("Mar", pickup_data))
     
     if pickup_items:
         df_pickup = pd.DataFrame(
@@ -899,15 +908,14 @@ if selected and selected in st.session_state.bookings:
         )
         df_pickup["Cumulative"] = df_pickup[t("rooms")].cumsum()
 
-        st.subheader(t("pickup"))
+        st.subheader(f"{t('pickup')} - {datetime.strptime(selected_stay_date, '%Y-%m-%d').strftime('%d %b %Y')}")
         st.line_chart(df_pickup.set_index(t("date"))["Cumulative"])
 
-    # tabella dettagli
-    details = []
-    total_rooms_day = 0
-    total_rev_day = 0
-    
-    if isinstance(pickup_data, dict):
+        # Tabella dettagli
+        details = []
+        total_rooms_day = 0
+        total_rev_day = 0
+        
         for book_date, data in sorted(pickup_data.items()):
             if isinstance(data, dict):
                 rooms = data.get("rooms", 0)
@@ -923,7 +931,7 @@ if selected and selected in st.session_state.bookings:
 
                 try:
                     book_dt = datetime.strptime(book_date, "%Y-%m-%d")
-                    stay_dt = datetime.strptime(selected, "%Y-%m-%d")
+                    stay_dt = datetime.strptime(selected_stay_date, "%Y-%m-%d")
                     days_before = (stay_dt - book_dt).days
                     book_date_formatted = book_dt.strftime("%d %b")
                 except (ValueError, TypeError):
@@ -937,32 +945,18 @@ if selected and selected in st.session_state.bookings:
                     "Prezzo": f"€{price}",
                     "Revenue": f"€{revenue:,.0f}"
                 })
-    else:
-        # Handle integer format (old bookings)
-        rooms = pickup_data
-        price = st.session_state.prices.get(selected, 100)
-        revenue = rooms * price
-        total_rooms_day = rooms
-        total_rev_day = revenue
-        details.append({
-            "Data prenotazione": "N/A",
-            "Giorni prima": "N/A",
-            "Camere": rooms,
-            "Prezzo": f"€{price}",
-            "Revenue": f"€{revenue:,.0f}"
-        })
 
-    if details:
-        st.dataframe(pd.DataFrame(details), use_container_width=True, hide_index=True)
-        col1, col2 = st.columns(2)
-        col1.metric(f"📊 Totale camere prenotate", f"{total_rooms_day}")
-        col2.metric(f"💰 Revenue totale giornaliero", f"€{total_rev_day:,.0f}")
+        if details:
+            st.dataframe(pd.DataFrame(details), use_container_width=True, hide_index=True)
+            col1, col2 = st.columns(2)
+            col1.metric(f"📊 Totale camere prenotate per questo giorno", f"{total_rooms_day}")
+            col2.metric(f"💰 Revenue totale per questo giorno", f"€{total_rev_day:,.0f}")
 else:
     st.info(t("no_bookings"))
 
     if st.session_state.game_running:
         st.caption(t("generating"))
-        # Safely calculate total bookings
+        # Calcola totale prenotazioni in modo sicuro
         total_bookings = 0
         for bookings in st.session_state.bookings.values():
             if isinstance(bookings, dict):
@@ -977,12 +971,12 @@ else:
         if total_bookings > 0:
             st.caption(f"📊 Totale prenotazioni: {total_bookings}")
         
-        # Fix: Count only April days with bookings
+        # Conta giorni di aprile con prenotazioni
         occupied_days = 0
         for date_str, occ in st.session_state.daily_occupancy.items():
             try:
                 date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                if date_obj.month == 4 and occ > 0:  # Only count April days
+                if date_obj.month == 4 and occ > 0:
                     occupied_days += 1
             except (ValueError, TypeError):
                 continue
