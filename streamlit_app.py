@@ -722,8 +722,11 @@ with st.sidebar:
 if rooms_value != st.session_state.total_rooms:
         st.session_state.total_rooms = rooms_value
 
-col_top1, col_top2 = st.columns([1,1])
-with col_top1:
+with st.sidebar:
+
+    st.divider()
+    st.subheader("🎮 Game")
+
     if st.button(t("start"), use_container_width=True, key="start_button"):
         st.session_state.game_running = True
         st.session_state.last_update = time.time()
@@ -731,21 +734,18 @@ with col_top1:
         if st.session_state.paused_elapsed > 0:
             st.session_state.last_update = time.time() - st.session_state.paused_elapsed
             st.session_state.paused_elapsed = 0
-with col_top2:
+
+    if st.button(t("next_day"), use_container_width=True, key="next_day_button"):
+        if st.session_state.current_date <= datetime(2026, 4, 30):
+            advance_day()
+            st.rerun()
+        else:
+            st.session_state.game_running = False
+            st.session_state.game_completed = True
+            st.rerun()
+
     if st.button(t("reset"), use_container_width=True, key="reset_button"):
         reset_game()
-    
-if st.session_state.game_running:
-    col_bottom = st.columns([2])[0]
-    with col_bottom:
-        if st.button(t("next_day"), use_container_width=True, key="next_day_button"):
-            if st.session_state.current_date <= datetime(2026, 4, 30):
-                advance_day()
-                st.rerun()
-            else:
-                st.session_state.game_running = False
-                st.session_state.game_completed = True
-                st.rerun()
 
 st.divider()
 st.subheader(t("stats"))
