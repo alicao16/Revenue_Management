@@ -85,7 +85,7 @@ TRANSLATIONS = {
         "booking_from": "Prenotazioni dal",
         "total_for_day": "Totale giornata",
         "rooms": "camere",
-        "april_only": "📅 Ad aprile si gioca! Imposta i prezzi ogni giorno, monitora l'occupazione e conquista la classifica. Le prenotazioni partono a marzo, ma i soggiorni sono ad aprile per simulare un hotel già operativo.",
+        "april_only": "📅 Ad aprile si gioca! Imposta i prezzi ogni giorno, monitora l'occupazione e conquista la classifica. Le prenotazioni partono a marzo, ma i soggiorni sono ad aprile e maggio per simulare un hotel già operativo.",
         "instructions": "Imposta i prezzi ogni giorno e cerca di massimizzare il revenue. Buona fortuna!",
         "login": "🔐 Accedi al tuo Profilo",
         "email": "📧 Email",
