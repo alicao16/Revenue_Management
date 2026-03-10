@@ -836,141 +836,235 @@ draw_calendar(st.session_state.calendar_month)
 
 
 # ===== PICKUP CHART =====
-st.header(t("booking_details"))
+st.header("📊 Analisi Prenotazioni")
 
-# Usa lo STESSO mese selezionato nel calendario "Imposta prezzi"
-selected_month = st.session_state.calendar_month
+# Tabs per distinguere le due visualizzazioni
+tab1, tab2 = st.tabs(["📈 Pickup Chart (cumulativo per giorno di soggiorno)", "📋 Dettaglio per data prenotazione"])
 
-# Raccogli tutte le date di prenotazione (quando è stata fatta la prenotazione)
-booking_dates = set()
-for stay_date, bookings in st.session_state.bookings.items():
-    if isinstance(bookings, dict):
-        for booking_date in bookings.keys():
-            try:
-                booking_dt = datetime.strptime(booking_date, "%Y-%m-%d")
-                if booking_dt.month == selected_month:
-                    booking_dates.add(booking_date)
-            except (ValueError, TypeError):
-                continue
-
-booking_dates = sorted(list(booking_dates))
-
-if booking_dates:
-    selected_booking_date = st.selectbox(
-        "Seleziona data di prenotazione",
-        booking_dates,
-        format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y")
-    )
+with tab1:
+    st.subheader("Pickup Chart - Accumulo prenotazioni nel tempo")
+    st.caption("Mostra come si accumulano le prenotazioni giorno per giorno per uno specifico giorno di soggiorno")
     
-    if selected_booking_date:
-        st.markdown(f"**Prenotazioni ricevute il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}**")
-        
-        # Trova tutte le prenotazioni fatte in questa data per soggiorni futuri
-        future_stays = []
-        total_rooms_booked = 0
-        total_revenue_day = 0
-        
-        for stay_date, bookings in st.session_state.bookings.items():
-            if isinstance(bookings, dict) and selected_booking_date in bookings:
-                data = bookings[selected_booking_date]
+    # Raccogli tutte le date di soggiorno (aprile-maggio) che hanno prenotazioni
+    stay_dates = []
+    for stay_date, bookings in st.session_state.bookings.items():
+        try:
+            date_obj = datetime.strptime(stay_date, "%Y-%m-%d")
+            if date_obj.month in [4, 5]:  # Solo aprile e maggio
+                # Verifica se ci sono prenotazioni
+                has_bookings = False
+                if isinstance(bookings, dict):
+                    for value in bookings.values():
+                        if isinstance(value, dict):
+                            if value.get("rooms", 0) > 0:
+                                has_bookings = True
+                                break
+                        elif value > 0:
+                            has_bookings = True
+                            break
+                elif bookings > 0:
+                    has_bookings = True
                 
-                if isinstance(data, dict):
-                    rooms = data.get("rooms", 0)
-                    price = data.get("price", st.session_state.prices.get(stay_date, 100))
-                else:
-                    rooms = data
-                    price = st.session_state.prices.get(stay_date, 100)
-                
-                if rooms > 0:
-                    revenue = rooms * price
-                    total_rooms_booked += rooms
-                    total_revenue_day += revenue
-                    
-                    try:
-                        stay_dt = datetime.strptime(stay_date, "%Y-%m-%d")
-                        booking_dt = datetime.strptime(selected_booking_date, "%Y-%m-%d")
-                        days_before = (stay_dt - booking_dt).days
-                        stay_formatted = stay_dt.strftime("%d %b %Y")
-                    except (ValueError, TypeError):
-                        days_before = "N/A"
-                        stay_formatted = stay_date
-                    
-                    future_stays.append({
-                        "Data soggiorno": stay_formatted,
-                        "Giorni dopo": days_before,
-                        "Camere": rooms,
-                        "Prezzo": f"€{price}",
-                        "Revenue": f"€{revenue:,.0f}"
-                    })
-        
-        if future_stays:
-            # Crea DataFrame per il grafico
-            df_pickup = pd.DataFrame(future_stays)
-            df_pickup = df_pickup.sort_values("Data soggiorno")
-            df_pickup["Cumulative"] = df_pickup["Camere"].cumsum()
-            
-            st.subheader(f"📈 Pick-up del {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}")
-            
-            # Mostra grafico dell'accumulo
-            chart_data = df_pickup.set_index("Data soggiorno")[["Cumulative"]]
-            st.line_chart(chart_data)
-            
-            # Mostra tabella dettagli
-            st.dataframe(df_pickup[["Data soggiorno", "Giorni dopo", "Camere", "Prezzo", "Revenue"]], 
-                        use_container_width=True, hide_index=True)
-            
-            # Metriche riassuntive
-            col1, col2, col3 = st.columns(3)
-            col1.metric("📊 Totale camere prenotate", f"{total_rooms_booked}")
-            col2.metric("💰 Revenue giornaliero", f"€{total_revenue_day:,.0f}")
-            col3.metric("🏨 Soggiorni futuri", len(future_stays))
-        else:
-            st.info(f"Nessuna prenotazione trovata per il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}")
-else:
-    if selected_month == 3:
-        st.info(f"Nessuna prenotazione registrata a marzo {datetime(2026, selected_month, 1).strftime('%Y')}")
-    elif selected_month == 4:
-        st.info(f"Nessuna prenotazione registrata ad aprile {datetime(2026, selected_month, 1).strftime('%Y')}")
-    else:
-        st.info(f"Nessuna prenotazione registrata a maggio {datetime(2026, selected_month, 1).strftime('%Y')}")
+                if has_bookings:
+                    stay_dates.append(stay_date)
+        except (ValueError, TypeError):
+            continue
     
-    if st.session_state.game_running:
-        st.caption(t("generating"))
-        # Calcola totale prenotazioni in modo sicuro
-        total_bookings = 0
-        for bookings in st.session_state.bookings.values():
-            if isinstance(bookings, dict):
-                for value in bookings.values():
-                    if isinstance(value, dict):
-                        total_bookings += value.get("rooms", 0)
+    if stay_dates:
+        selected_stay = st.selectbox(
+            "Seleziona giorno di soggiorno per vedere il pickup cumulativo",
+            sorted(stay_dates),
+            format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y"),
+            key="stay_select"
+        )
+        
+        if selected_stay and selected_stay in st.session_state.bookings:
+            # Ottieni tutte le prenotazioni per questo giorno di soggiorno
+            bookings_for_stay = st.session_state.bookings[selected_stay]
+            
+            # Crea dati per il pickup chart (accumulo giorno per giorno)
+            pickup_data = []
+            cumulative = 0
+            
+            if isinstance(bookings_for_stay, dict):
+                # Ordina per data di prenotazione
+                for book_date, data in sorted(bookings_for_stay.items()):
+                    if isinstance(data, dict):
+                        rooms = data.get("rooms", 0)
                     else:
-                        total_bookings += value
+                        rooms = data
+                    
+                    if rooms > 0:
+                        cumulative += rooms
+                        try:
+                            book_dt = datetime.strptime(book_date, "%Y-%m-%d")
+                            date_label = book_dt.strftime("%d %b")
+                        except:
+                            date_label = book_date
+                        
+                        pickup_data.append({
+                            "Data prenotazione": date_label,
+                            "Pick-up giornaliero": rooms,
+                            "Pick-up cumulativo": cumulative
+                        })
+            
+            if pickup_data:
+                df_pickup = pd.DataFrame(pickup_data)
+                
+                # Spiegazione del concetto di pickup con esempio
+                with st.expander("📘 Cos'è il Pick-up?"):
+                    st.markdown("""
+                    **Pick-up giornaliero**: Nuove prenotazioni arrivate in una specifica data per questo giorno di soggiorno
+                    
+                    **Pick-up cumulativo**: Totale prenotazioni accumulate fino a quella data per questo giorno di soggiorno
+                    
+                    **Esempio pratico per il giorno di soggiorno del 10 aprile**:
+                    - **1 marzo**: 5 camere prenotate → pick-up giornaliero = 5, cumulativo = 5
+                    - **2 marzo**: 3 camere prenotate → pick-up giornaliero = 3, cumulativo = 8
+                    - **5 marzo**: 2 camere prenotate → pick-up giornaliero = 2, cumulativo = 10
+                    
+                    Il grafico mostra come si riempie l'hotel nel tempo per uno specifico giorno di arrivo.
+                    """)
+                
+                # Mostra il grafico del pickup cumulativo
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.subheader(f"Pick-up cumulativo per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
+                    st.line_chart(df_pickup.set_index("Data prenotazione")[["Pick-up cumulativo"]])
+                    
+                    # Aggiungi anche un grafico a barre del pickup giornaliero
+                    st.subheader("Pick-up giornaliero")
+                    st.bar_chart(df_pickup.set_index("Data prenotazione")[["Pick-up giornaliero"]])
+                
+                with col2:
+                    # Metriche riassuntive
+                    total_rooms = df_pickup["Pick-up giornaliero"].sum()
+                    first_booking = df_pickup.iloc[0]["Data prenotazione"] if not df_pickup.empty else "N/A"
+                    last_booking = df_pickup.iloc[-1]["Data prenotazione"] if not df_pickup.empty else "N/A"
+                    peak_day = df_pickup.loc[df_pickup["Pick-up giornaliero"].idxmax(), "Data prenotazione"] if not df_pickup.empty else "N/A"
+                    peak_value = df_pickup["Pick-up giornaliero"].max() if not df_pickup.empty else 0
+                    
+                    st.metric("🏨 Totale camere prenotate", f"{total_rooms}")
+                    st.metric("📅 Prima prenotazione", first_booking)
+                    st.metric("📅 Ultima prenotazione", last_booking)
+                    st.metric("📈 Giorno con più pickup", f"{peak_day} ({peak_value} camere)")
+                
+                # Mostra tabella dettagli con i pickup giornalieri
+                st.subheader("Dettaglio pickup giornaliero")
+                st.dataframe(df_pickup, use_container_width=True, hide_index=True)
+                
+                # Calcola revenue totale per questo giorno
+                total_rev = 0
+                if isinstance(bookings_for_stay, dict):
+                    for data in bookings_for_stay.values():
+                        if isinstance(data, dict):
+                            rooms = data.get("rooms", 0)
+                            price = data.get("price", st.session_state.prices.get(selected_stay, 100))
+                            total_rev += rooms * price
+                        else:
+                            # Se è un intero, usa il prezzo corrente
+                            rooms = data
+                            price = st.session_state.prices.get(selected_stay, 100)
+                            total_rev += rooms * price
+                
+                st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
             else:
-                total_bookings += bookings
+                st.info(f"Nessun dato di pickup per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
+    else:
+        st.info("Nessuna prenotazione registrata per aprile o maggio")
+
+with tab2:
+    st.subheader("Dettaglio prenotazioni per data di prenotazione")
+    st.caption("Mostra tutte le prenotazioni fatte in una specifica data PER soggiorni futuri (aprile-maggio)")
+    
+    # Usa lo STESSO mese selezionato nel calendario "Imposta prezzi"
+    selected_month = st.session_state.calendar_month
+    
+    # Raccogli tutte le date di prenotazione (quando è stata fatta la prenotazione)
+    booking_dates = set()
+    for stay_date, bookings in st.session_state.bookings.items():
+        if isinstance(bookings, dict):
+            for booking_date in bookings.keys():
+                try:
+                    booking_dt = datetime.strptime(booking_date, "%Y-%m-%d")
+                    if booking_dt.month == selected_month:
+                        booking_dates.add(booking_date)
+                except (ValueError, TypeError):
+                    continue
+    
+    booking_dates = sorted(list(booking_dates))
+    
+    if booking_dates:
+        selected_booking_date = st.selectbox(
+            "Seleziona data di prenotazione",
+            booking_dates,
+            format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y"),
+            key="booking_select"
+        )
         
-        if total_bookings > 0:
-            st.caption(f"📊 Totale prenotazioni: {total_bookings}")
-        
-        # Conta giorni di aprile con prenotazioni
-        occupied_days = 0
-        for date_str, occ in st.session_state.daily_occupancy.items():
-            try:
-                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                if date_obj.month == 4 and occ > 0:
-                    occupied_days += 1
-            except (ValueError, TypeError):
-                continue
-        
-        st.caption(f"📅 Giorni di aprile con prenotazioni: {occupied_days}/30")
-        
-        st.caption(f"📍 Data corrente: {st.session_state.current_date.strftime('%d/%m/%Y')}")
+        if selected_booking_date:
+            st.markdown(f"**Prenotazioni ricevute il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}**")
+            
+            # Trova tutte le prenotazioni fatte in questa data per soggiorni futuri
+            future_stays = []
+            total_rooms_booked = 0
+            total_revenue_day = 0
+            
+            for stay_date, bookings in st.session_state.bookings.items():
+                if isinstance(bookings, dict) and selected_booking_date in bookings:
+                    data = bookings[selected_booking_date]
+                    
+                    if isinstance(data, dict):
+                        rooms = data.get("rooms", 0)
+                        price = data.get("price", st.session_state.prices.get(stay_date, 100))
+                    else:
+                        rooms = data
+                        price = st.session_state.prices.get(stay_date, 100)
+                    
+                    if rooms > 0:
+                        revenue = rooms * price
+                        total_rooms_booked += rooms
+                        total_revenue_day += revenue
+                        
+                        try:
+                            stay_dt = datetime.strptime(stay_date, "%Y-%m-%d")
+                            booking_dt = datetime.strptime(selected_booking_date, "%Y-%m-%d")
+                            days_before = (stay_dt - booking_dt).days
+                            stay_formatted = stay_dt.strftime("%d %b %Y")
+                        except (ValueError, TypeError):
+                            days_before = "N/A"
+                            stay_formatted = stay_date
+                        
+                        future_stays.append({
+                            "Data soggiorno": stay_formatted,
+                            "Giorni dopo": days_before,
+                            "Camere": rooms,
+                            "Prezzo": f"€{price}",
+                            "Revenue": f"€{revenue:,.0f}"
+                        })
+            
+            if future_stays:
+                # Mostra tabella dettagli
+                st.dataframe(pd.DataFrame(future_stays), use_container_width=True, hide_index=True)
+                
+                # Metriche riassuntive
+                col1, col2, col3 = st.columns(3)
+                col1.metric("📊 Totale camere prenotate in questo giorno", f"{total_rooms_booked}")
+                col2.metric("💰 Revenue generato in questo giorno", f"€{total_revenue_day:,.0f}")
+                col3.metric("🏨 Soggiorni futuri prenotati", len(future_stays))
+            else:
+                st.info(f"Nessuna prenotazione trovata per il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}")
+    else:
+        month_names = {3: "marzo", 4: "aprile", 5: "maggio"}
+        st.info(f"Nessuna prenotazione registrata a {month_names.get(selected_month, '')} {datetime(2026, selected_month, 1).strftime('%Y')}")
 
 st.divider()
 
 st.header(t("current_state"))
 
 total_occ = sum(st.session_state.daily_occupancy.values())
-max_possible = st.session_state.total_rooms * 30  # Only April has 30 days
+max_possible = st.session_state.total_rooms * 30  # Solo aprile ha 30 giorni
 occupancy_percentage = (total_occ / max_possible * 100) if max_possible > 0 else 0
 
 if st.session_state.current_date <= datetime(2026, 4, 30):
@@ -1014,7 +1108,7 @@ if st.session_state.current_date > datetime(2026, 4, 30):
     col2.metric("Prezzo medio", f"€{avg_price:.0f}")
     
     if st.session_state.daily_occupancy:
-        # Find best day only in April
+        # Trova il giorno con più prenotazioni solo in aprile
         april_occupancy = {date: occ for date, occ in st.session_state.daily_occupancy.items() 
                           if datetime.strptime(date, "%Y-%m-%d").month == 4}
         if april_occupancy:
