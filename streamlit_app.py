@@ -840,14 +840,20 @@ selected_month = st.session_state.calendar_month
 # giorni del mese selezionato con prenotazioni
 month_days = []
 for date_str, bookings in st.session_state.bookings.items():
-    if datetime.strptime(date_str, "%Y-%m-%d").month == selected_month:
-        # Check if bookings is a dictionary or an integer
-        if isinstance(bookings, dict):
-            total_bookings = sum(bookings.values())
-        else:
-            total_bookings = bookings
-        if total_bookings > 0:
-            month_days.append(date_str)
+    try:
+        # Check if the date string can be parsed and matches the selected month
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        if date_obj.month == selected_month:
+            # Check if bookings is a dictionary or an integer
+            if isinstance(bookings, dict):
+                total_bookings = sum(bookings.values())
+            else:
+                total_bookings = bookings
+            if total_bookings > 0:
+                month_days.append(date_str)
+    except (ValueError, TypeError):
+        # Skip if date_str is not valid
+        continue
 
 selected = None
 if month_days:
@@ -868,13 +874,15 @@ if selected and selected in st.session_state.bookings:
     if isinstance(pickup_data, dict):
         for book_date, data in pickup_data.items():
             if isinstance(data, dict):
-                rooms = data["rooms"]
+                rooms = data.get("rooms", 0)
             else:
                 rooms = data
-            pickup_items.append((book_date, rooms))
+            if rooms > 0:
+                pickup_items.append((book_date, rooms))
     else:
         # If it's just an integer (old format), create a single entry
-        pickup_items.append(("Unknown", pickup_data))
+        if pickup_data > 0:
+            pickup_items.append(("Unknown", pickup_data))
     
     if pickup_items:
         df_pickup = pd.DataFrame(
@@ -893,8 +901,8 @@ if selected and selected in st.session_state.bookings:
     if isinstance(pickup_data, dict):
         for book_date, data in sorted(pickup_data.items()):
             if isinstance(data, dict):
-                rooms = data["rooms"]
-                price = data["price"]
+                rooms = data.get("rooms", 0)
+                price = data.get("price", st.session_state.prices.get(book_date, 100))
             else:
                 rooms = data
                 price = st.session_state.prices.get(book_date, 100)
@@ -904,12 +912,15 @@ if selected and selected in st.session_state.bookings:
                 total_rooms_day += rooms
                 total_rev_day += revenue
 
-                book_dt = datetime.strptime(book_date, "%Y-%m-%d")
-                stay_dt = datetime.strptime(selected, "%Y-%m-%d")
-                days_before = (stay_dt - book_dt).days
+                try:
+                    book_dt = datetime.strptime(book_date, "%Y-%m-%d")
+                    stay_dt = datetime.strptime(selected, "%Y-%m-%d")
+                    days_before = (stay_dt - book_dt).days
+                except (ValueError, TypeError):
+                    days_before = "N/A"
 
                 details.append({
-                    "Data prenotazione": book_dt.strftime("%d %b"),
+                    "Data prenotazione": book_dt.strftime("%d %b") if isinstance(book_dt, datetime) else book_date,
                     "Giorni prima": days_before,
                     "Camere": rooms,
                     "Prezzo": f"€{price}",
@@ -944,7 +955,11 @@ else:
         total_bookings = 0
         for bookings in st.session_state.bookings.values():
             if isinstance(bookings, dict):
-                total_bookings += sum(bookings.values())
+                for value in bookings.values():
+                    if isinstance(value, dict):
+                        total_bookings += value.get("rooms", 0)
+                    else:
+                        total_bookings += value
             else:
                 total_bookings += bookings
         
