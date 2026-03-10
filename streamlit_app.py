@@ -1,4 +1,4 @@
-import math
+import math 
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -771,61 +771,70 @@ if st.session_state.game_completed and st.session_state.user_id:
             time.sleep(1)
             st.rerun()
 
-st.header(t("set_prices"))
+st.header("💰 Imposta prezzi per aprile e maggio")
 
 giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 
-rows = []
-d = datetime(2026, 4, 1)
-while d <= datetime(2026, 5, 31):
-    date_str = d.strftime("%Y-%m-%d")
-    is_past = d < st.session_state.current_date
+def draw_calendar(month):
 
-    price_val = st.session_state.prices[date_str]
-    occ = st.session_state.daily_occupancy[date_str]
-    if occ == 0:
-        occ_str = f"🟢 {occ}/{st.session_state.total_rooms}"
-    elif occ < st.session_state.total_rooms:
-        occ_str = f"🟡 {occ}/{st.session_state.total_rooms}"
-    else:
-        occ_str = f"🔴 {occ}/{st.session_state.total_rooms}"
-    rev_str = f"€{st.session_state.daily_revenue[date_str]:,.0f}"
+    year = 2026
+    first_day = datetime(year, month, 1)
 
-    locked = is_past and st.session_state.current_date.month == 4
+    # trova lunedì della prima settimana
+    start = first_day - timedelta(days=first_day.weekday())
 
-    rows.append({
-        "Data": d.strftime("%d/%m"),
-        "Giorno": giorni[d.weekday()],
-        "Prezzo": price_val,
-        "_locked": locked,
-        "Camere": occ_str,
-        "Revenue": rev_str,
-        "_key": date_str,
-    })
-    d += timedelta(days=1)
+    st.subheader(first_day.strftime("%B %Y").upper())
 
-price_df = pd.DataFrame(rows)
+    cols = st.columns(7)
+    for i, g in enumerate(giorni):
+        cols[i].markdown(f"**{g}**")
 
-meta_df = price_df[["_locked", "_key"]].copy()
-display_df = price_df.drop(columns=["_locked", "_key"])
+    d = start
 
-edited = st.data_editor(
-    display_df,
-    column_config={
-        "Prezzo": st.column_config.NumberColumn(
-            "💰 Prezzo",
-            min_value=10, 
-            max_value=500,
-            step=5,
-        ),
-        "Camere": st.column_config.TextColumn("📊 Camere", disabled=True),
-        "Revenue": st.column_config.TextColumn("📈 Revenue", disabled=True),
-        "Data": st.column_config.TextColumn("📅 Data", disabled=True),
-        "Giorno": st.column_config.TextColumn("📆 Giorno", disabled=True),
-    },
-    hide_index=True,
-    use_container_width=True,
-)
+    while True:
+
+        cols = st.columns(7)
+
+        for i in range(7):
+
+            with cols[i]:
+
+                if d.month == month:
+
+                    date_str = d.strftime("%Y-%m-%d")
+
+                    occ = st.session_state.daily_occupancy[date_str]
+                    rooms = st.session_state.total_rooms
+
+                    price = st.number_input(
+                        f"{d.day}",
+                        min_value=10,
+                        max_value=500,
+                        step=5,
+                        value=st.session_state.prices[date_str],
+                        key=f"price_{date_str}"
+                    )
+
+                    st.session_state.prices[date_str] = price
+
+                    if occ == 0:
+                        st.caption(f"🟢 {occ}/{rooms}")
+                    elif occ < rooms:
+                        st.caption(f"🟡 {occ}/{rooms}")
+                    else:
+                        st.caption(f"🔴 {occ}/{rooms}")
+
+                else:
+                    st.write("")
+
+            d += timedelta(days=1)
+
+        if d.month != month and d.weekday() == 0:
+            break
+
+
+draw_calendar(4)
+draw_calendar(5)
 
 for idx, row in edited.iterrows():
     key = meta_df.loc[idx, "_key"]
