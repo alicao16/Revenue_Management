@@ -657,7 +657,7 @@ with st.sidebar:
     help="Higher value = demand reacts more strongly to price"
 )
 
-st.session_state.alpha = alpha_value
+    st.session_state.alpha = alpha_value
     
     # Aggiorna session_state solo se il valore è cambiato
     if rooms_value != st.session_state.total_rooms:
