@@ -616,12 +616,12 @@ def generate_bookings(booking_date):
     return total_new_bookings
 
        # Logistic demand curve
-        price_0 = 120  # inflection price (50% demand)
-        alpha = st.session_state.get("alpha", 0.05)  # usare il valore dello slider
+    price_0 = 120  # inflection price (50% demand)
+    alpha = st.session_state.get("alpha", 0.05)  # usare il valore dello slider
 
-        demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
+    demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
 
-        expected_total_demand = st.session_state.total_rooms * demand_fraction
+    expected_total_demand = st.session_state.total_rooms * demand_fraction
 
         # Booking window effect (closer dates book faster)
         days_before = (stay_date - booking_date).days
