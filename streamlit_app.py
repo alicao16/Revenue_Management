@@ -771,20 +771,46 @@ if st.session_state.game_completed and st.session_state.user_id:
             time.sleep(1)
             st.rerun()
 
-st.header("💰 Imposta prezzi per aprile e maggio")
+# ===== CALENDARIO PREZZI =====
+
+st.header("💰 Imposta prezzi")
 
 giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
+
+# mese visualizzato
+if "calendar_month" not in st.session_state:
+    st.session_state.calendar_month = 4
+
+
+def change_month(delta):
+    new_month = st.session_state.calendar_month + delta
+    if 4 <= new_month <= 5:
+        st.session_state.calendar_month = new_month
+
 
 def draw_calendar(month):
 
     year = 2026
     first_day = datetime(year, month, 1)
 
-    # trova lunedì della prima settimana
+    # trova il lunedì della prima settimana
     start = first_day - timedelta(days=first_day.weekday())
 
-    st.subheader(first_day.strftime("%B %Y").upper())
+    # intestazione mese con frecce
+    col1, col2, col3 = st.columns([1,4,1])
 
+    with col1:
+        if st.button("⬅️", key="prev_month"):
+            change_month(-1)
+
+    with col2:
+        st.subheader(first_day.strftime("%B %Y").upper())
+
+    with col3:
+        if st.button("➡️", key="next_month"):
+            change_month(1)
+
+    # intestazione giorni settimana
     cols = st.columns(7)
     for i, g in enumerate(giorni):
         cols[i].markdown(f"**{g}**")
@@ -817,6 +843,7 @@ def draw_calendar(month):
 
                     st.session_state.prices[date_str] = price
 
+                    # occupazione
                     if occ == 0:
                         st.caption(f"🟢 {occ}/{rooms}")
                     elif occ < rooms:
@@ -833,9 +860,7 @@ def draw_calendar(month):
             break
 
 
-draw_calendar(4)
-draw_calendar(5)
-
+draw_calendar(st.session_state.calendar_month)
 for idx, row in edited.iterrows():
     key = meta_df.loc[idx, "_key"]
     if not meta_df.loc[idx, "_locked"]:
