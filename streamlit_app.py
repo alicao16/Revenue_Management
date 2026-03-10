@@ -688,7 +688,7 @@ with st.sidebar:
     rooms_value = st.number_input(
         t("total_rooms"),
         min_value=1,
-        max_value=100,
+        max_value=300,
         value=st.session_state.total_rooms,
         step=1,
         disabled=st.session_state.game_running,
@@ -814,7 +814,7 @@ edited = st.data_editor(
     column_config={
         "Prezzo": st.column_config.NumberColumn(
             "💰 Prezzo",
-            min_value=10,
+            min_value=10, 
             max_value=500,
             step=5,
         ),
