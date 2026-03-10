@@ -549,23 +549,71 @@ if "init" not in st.session_state:
 
 # ===== FUNZIONI =====
 def generate_bookings(booking_date):
+
     booking_str = booking_date.strftime("%Y-%m-%d")
     total_new_bookings = 0
 
-    for day in range(1, 31):
-        stay_date = datetime(2026, 4, day)
+    stay_date = datetime(2026, 4, 1)
+
+    while stay_date <= datetime(2026, 5, 31):
 
         if stay_date < booking_date:
+            stay_date += timedelta(days=1)
             continue
 
         stay_str = stay_date.strftime("%Y-%m-%d")
+
         current_occupancy = st.session_state.daily_occupancy[stay_str]
 
         if current_occupancy >= st.session_state.total_rooms:
+            stay_date += timedelta(days=1)
             continue
 
         available = st.session_state.total_rooms - current_occupancy
         stay_price = st.session_state.prices.get(stay_str, 100)
+
+        # ===== PRICE ELASTICITY =====
+        price_0 = 120
+        alpha = st.session_state.get("alpha", 0.02)
+
+        demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
+
+        expected_total_demand = st.session_state.total_rooms * demand_fraction * 0.25
+
+        # ===== BOOKING WINDOW =====
+        days_before = (stay_date - booking_date).days
+        time_factor = max(0.4, min(2.5, 20 / max(1, days_before)))
+
+        # ===== SEASONALITY =====
+        if stay_date.month == 4:
+            season_factor = st.session_state.get("season_april", 1.0)
+        else:
+            season_factor = st.session_state.get("season_may", 1.2)
+
+        potential_demand = int(
+            expected_total_demand
+            * time_factor
+            * season_factor
+            * random.uniform(0.6, 1.4)
+        )
+
+        new_bookings = min(potential_demand, available)
+
+        if new_bookings > 0:
+
+            st.session_state.bookings[stay_str][booking_str] += new_bookings
+            st.session_state.daily_occupancy[stay_str] += new_bookings
+
+            revenue = new_bookings * stay_price
+
+            st.session_state.daily_revenue[stay_str] += revenue
+            st.session_state.total_revenue += revenue
+
+            total_new_bookings += new_bookings
+
+        stay_date += timedelta(days=1)
+
+    return total_new_bookings
 
        # Logistic demand curve
         price_0 = 120  # inflection price (50% demand)
