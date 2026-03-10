@@ -838,11 +838,16 @@ st.header(t("booking_details"))
 selected_month = st.session_state.calendar_month
 
 # giorni del mese selezionato con prenotazioni
-month_days = [
-    date_str for date_str, bookings in st.session_state.bookings.items()
-    if datetime.strptime(date_str, "%Y-%m-%d").month == selected_month
-       and sum(bookings.values()) > 0
-]
+month_days = []
+for date_str, bookings in st.session_state.bookings.items():
+    if datetime.strptime(date_str, "%Y-%m-%d").month == selected_month:
+        # Check if bookings is a dictionary or an integer
+        if isinstance(bookings, dict):
+            total_bookings = sum(bookings.values())
+        else:
+            total_bookings = bookings
+        if total_bookings > 0:
+            month_days.append(date_str)
 
 selected = None
 if month_days:
@@ -860,49 +865,70 @@ if selected and selected in st.session_state.bookings:
 
     # Create DataFrame for pickup data
     pickup_items = []
-    for book_date, data in pickup_data.items():
-        if isinstance(data, dict):
-            rooms = data["rooms"]
-        else:
-            rooms = data
-        pickup_items.append((book_date, rooms))
+    if isinstance(pickup_data, dict):
+        for book_date, data in pickup_data.items():
+            if isinstance(data, dict):
+                rooms = data["rooms"]
+            else:
+                rooms = data
+            pickup_items.append((book_date, rooms))
+    else:
+        # If it's just an integer (old format), create a single entry
+        pickup_items.append(("Unknown", pickup_data))
     
-    df_pickup = pd.DataFrame(
-        sorted(pickup_items), columns=[t("date"), t("rooms")]
-    )
-    df_pickup["Cumulative"] = df_pickup[t("rooms")].cumsum()
+    if pickup_items:
+        df_pickup = pd.DataFrame(
+            sorted(pickup_items), columns=[t("date"), t("rooms")]
+        )
+        df_pickup["Cumulative"] = df_pickup[t("rooms")].cumsum()
 
-    st.subheader(t("pickup"))
-    st.line_chart(df_pickup.set_index(t("date"))["Cumulative"])
+        st.subheader(t("pickup"))
+        st.line_chart(df_pickup.set_index(t("date"))["Cumulative"])
 
     # tabella dettagli
     details = []
     total_rooms_day = 0
     total_rev_day = 0
-    for book_date, data in sorted(pickup_data.items()):
-        if isinstance(data, dict):
-            rooms = data["rooms"]
-            price = data["price"]
-        else:
-            rooms = data
-            price = st.session_state.prices.get(book_date, 100)
-        
-        if rooms > 0:
-            revenue = rooms * price
-            total_rooms_day += rooms
-            total_rev_day += revenue
+    
+    if isinstance(pickup_data, dict):
+        for book_date, data in sorted(pickup_data.items()):
+            if isinstance(data, dict):
+                rooms = data["rooms"]
+                price = data["price"]
+            else:
+                rooms = data
+                price = st.session_state.prices.get(book_date, 100)
+            
+            if rooms > 0:
+                revenue = rooms * price
+                total_rooms_day += rooms
+                total_rev_day += revenue
 
-            book_dt = datetime.strptime(book_date, "%Y-%m-%d")
-            stay_dt = datetime.strptime(selected, "%Y-%m-%d")
-            days_before = (stay_dt - book_dt).days
+                book_dt = datetime.strptime(book_date, "%Y-%m-%d")
+                stay_dt = datetime.strptime(selected, "%Y-%m-%d")
+                days_before = (stay_dt - book_dt).days
 
-            details.append({
-                "Data prenotazione": book_dt.strftime("%d %b"),
-                "Giorni prima": days_before,
-                "Camere": rooms,
-                "Prezzo": f"€{price}",
-                "Revenue": f"€{revenue:,.0f}"
-            })
+                details.append({
+                    "Data prenotazione": book_dt.strftime("%d %b"),
+                    "Giorni prima": days_before,
+                    "Camere": rooms,
+                    "Prezzo": f"€{price}",
+                    "Revenue": f"€{revenue:,.0f}"
+                })
+    else:
+        # Handle integer format (old bookings)
+        rooms = pickup_data
+        price = st.session_state.prices.get(selected, 100)
+        revenue = rooms * price
+        total_rooms_day = rooms
+        total_rev_day = revenue
+        details.append({
+            "Data prenotazione": "N/A",
+            "Giorni prima": "N/A",
+            "Camere": rooms,
+            "Prezzo": f"€{price}",
+            "Revenue": f"€{revenue:,.0f}"
+        })
 
     if details:
         st.dataframe(pd.DataFrame(details), use_container_width=True, hide_index=True)
@@ -914,7 +940,14 @@ else:
 
     if st.session_state.game_running:
         st.caption(t("generating"))
-        total_bookings = sum(sum(v.values()) for v in st.session_state.bookings.values())
+        # Safely calculate total bookings
+        total_bookings = 0
+        for bookings in st.session_state.bookings.values():
+            if isinstance(bookings, dict):
+                total_bookings += sum(bookings.values())
+            else:
+                total_bookings += bookings
+        
         if total_bookings > 0:
             st.caption(f"📊 Totale prenotazioni: {total_bookings}")
         
@@ -923,7 +956,6 @@ else:
             st.caption(f"📅 Giorni con prenotazioni: {occupied_days}/30")
         
         st.caption(f"📍 Data corrente: {st.session_state.current_date.strftime('%d/%m/%Y')}")
-
 st.divider()
 
 st.header(t("current_state"))
