@@ -860,7 +860,7 @@ def draw_calendar(month):
             break
 
 
-    draw_calendar(st.session_state.calendar_month)
+draw_calendar(st.session_state.calendar_month)
 
 
 # ===== PICKUP CHART (uses only existing bookings, no new bookings generated) =====
