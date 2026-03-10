@@ -844,12 +844,21 @@ for date_str, bookings in st.session_state.bookings.items():
         # Check if the date string can be parsed and matches the selected month
         date_obj = datetime.strptime(date_str, "%Y-%m-%d")
         if date_obj.month == selected_month:
-            # Check if bookings is a dictionary or an integer
+            # Check if there are any bookings for this date
+            has_bookings = False
             if isinstance(bookings, dict):
-                total_bookings = sum(bookings.values())
-            else:
-                total_bookings = bookings
-            if total_bookings > 0:
+                for value in bookings.values():
+                    if isinstance(value, dict):
+                        if value.get("rooms", 0) > 0:
+                            has_bookings = True
+                            break
+                    elif value > 0:
+                        has_bookings = True
+                        break
+            elif bookings > 0:
+                has_bookings = True
+            
+            if has_bookings:
                 month_days.append(date_str)
     except (ValueError, TypeError):
         # Skip if date_str is not valid
@@ -872,7 +881,7 @@ if selected and selected in st.session_state.bookings:
     # Create DataFrame for pickup data
     pickup_items = []
     if isinstance(pickup_data, dict):
-        for book_date, data in pickup_data.items():
+        for book_date, data in sorted(pickup_data.items()):
             if isinstance(data, dict):
                 rooms = data.get("rooms", 0)
             else:
@@ -886,7 +895,7 @@ if selected and selected in st.session_state.bookings:
     
     if pickup_items:
         df_pickup = pd.DataFrame(
-            sorted(pickup_items), columns=[t("date"), t("rooms")]
+            pickup_items, columns=[t("date"), t("rooms")]
         )
         df_pickup["Cumulative"] = df_pickup[t("rooms")].cumsum()
 
@@ -916,11 +925,13 @@ if selected and selected in st.session_state.bookings:
                     book_dt = datetime.strptime(book_date, "%Y-%m-%d")
                     stay_dt = datetime.strptime(selected, "%Y-%m-%d")
                     days_before = (stay_dt - book_dt).days
+                    book_date_formatted = book_dt.strftime("%d %b")
                 except (ValueError, TypeError):
                     days_before = "N/A"
+                    book_date_formatted = book_date
 
                 details.append({
-                    "Data prenotazione": book_dt.strftime("%d %b") if isinstance(book_dt, datetime) else book_date,
+                    "Data prenotazione": book_date_formatted,
                     "Giorni prima": days_before,
                     "Camere": rooms,
                     "Prezzo": f"€{price}",
@@ -966,17 +977,26 @@ else:
         if total_bookings > 0:
             st.caption(f"📊 Totale prenotazioni: {total_bookings}")
         
-        occupied_days = sum(1 for v in st.session_state.daily_occupancy.values() if v > 0)
-        if occupied_days > 0:
-            st.caption(f"📅 Giorni con prenotazioni: {occupied_days}/30")
+        # Fix: Count only April days with bookings
+        occupied_days = 0
+        for date_str, occ in st.session_state.daily_occupancy.items():
+            try:
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                if date_obj.month == 4 and occ > 0:  # Only count April days
+                    occupied_days += 1
+            except (ValueError, TypeError):
+                continue
+        
+        st.caption(f"📅 Giorni di aprile con prenotazioni: {occupied_days}/30")
         
         st.caption(f"📍 Data corrente: {st.session_state.current_date.strftime('%d/%m/%Y')}")
+
 st.divider()
 
 st.header(t("current_state"))
 
 total_occ = sum(st.session_state.daily_occupancy.values())
-max_possible = st.session_state.total_rooms * 30
+max_possible = st.session_state.total_rooms * 30  # Only April has 30 days
 occupancy_percentage = (total_occ / max_possible * 100) if max_possible > 0 else 0
 
 if st.session_state.current_date <= datetime(2026, 4, 30):
@@ -1007,19 +1027,23 @@ progress = min(1, days_passed / total_days)
 st.progress(progress, text=f"Avanzamento: {days_passed}/{total_days} giorni")
 
 if total_occ > 0:
-    st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili")
+    st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili in aprile")
 
 if st.session_state.current_date > datetime(2026, 4, 30):
     st.balloons()
     st.success(t("game_end").format(revenue=st.session_state.total_revenue))
     
     col1, col2, col3 = st.columns(3)
-    col1.metric("Occupazione media", f"{occupancy_percentage:.1f}%")
+    col1.metric("Occupazione media aprile", f"{occupancy_percentage:.1f}%")
     
     avg_price = st.session_state.total_revenue / total_occ if total_occ > 0 else 0
     col2.metric("Prezzo medio", f"€{avg_price:.0f}")
     
     if st.session_state.daily_occupancy:
-        best_day_str = max(st.session_state.daily_occupancy.items(), key=lambda x: x[1])[0]
-        best_day = datetime.strptime(best_day_str, "%Y-%m-%d").strftime("%d %b")
-        col3.metric("Giorno più pieno", best_day)
+        # Find best day only in April
+        april_occupancy = {date: occ for date, occ in st.session_state.daily_occupancy.items() 
+                          if datetime.strptime(date, "%Y-%m-%d").month == 4}
+        if april_occupancy:
+            best_day_str = max(april_occupancy.items(), key=lambda x: x[1])[0]
+            best_day = datetime.strptime(best_day_str, "%Y-%m-%d").strftime("%d %b")
+            col3.metric("Giorno più pieno di aprile", best_day)
