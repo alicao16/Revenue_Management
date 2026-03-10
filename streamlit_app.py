@@ -829,7 +829,7 @@ def draw_calendar(month):
 
                     date_str = d.strftime("%Y-%m-%d")
 
-                    occ = st.session_state.daily_occupancy[date_str]
+                    occ = st.session_state.daily_occupancy.get[date_str,0]
                     rooms = st.session_state.total_rooms
 
                     price = st.number_input(
@@ -837,7 +837,7 @@ def draw_calendar(month):
                         min_value=10,
                         max_value=500,
                         step=5,
-                        value=st.session_state.prices[date_str],
+                        value=st.session_state.prices[date_str,100],
                         key=f"price_{date_str}"
                     )
 
@@ -861,10 +861,7 @@ def draw_calendar(month):
 
 
 draw_calendar(st.session_state.calendar_month)
-for idx, row in edited.iterrows():
-    key = meta_df.loc[idx, "_key"]
-    if not meta_df.loc[idx, "_locked"]:
-        st.session_state.prices[key] = row["Prezzo"]
+
 
 # ===== PICKUP CHART (uses only existing bookings, no new bookings generated) =====
 st.header(t("booking_details"))
