@@ -577,7 +577,7 @@ def generate_bookings(booking_date):
         price_0 = 120
         alpha = st.session_state.get("alpha", 0.02)
         demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
-        expected_total_demand = st.session_state.total_rooms * demand_fraction * 0.25
+        expected_total_demand = st.session_state.total_rooms * demand_fraction * 0.10
 
         # ===== BOOKING WINDOW =====
         days_before = max(1, (stay_date - booking_date).days)
@@ -587,7 +587,7 @@ def generate_bookings(booking_date):
         season_factor = st.session_state.get(
             "season_april" if stay_date.month == 4 else "season_may", 1.0
         )
-
+        
         # domanda potenziale
         potential_demand = int(expected_total_demand * time_factor * season_factor * random.uniform(0.6, 1.4))
 
@@ -707,7 +707,7 @@ with st.sidebar:
             st.session_state.paused_elapsed = 0
 
     if st.button(t("next_day"), use_container_width=True, key="next_day_button"):
-        if st.session_state.current_date <= datetime(2026, 4, 30):
+        if st.session_state.current_date <= datetime(2026, 5, 31):
             advance_day()
             st.rerun()
         else:
