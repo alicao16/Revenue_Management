@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -550,64 +551,73 @@ if "init" not in st.session_state:
 
 # ===== FUNZIONI =====
 def generate_bookings(booking_date):
-    """Genera prenotazioni a partire dalla data di booking, rispettando i limiti di camere disponibili"""
+
     booking_str = booking_date.strftime("%Y-%m-%d")
     total_new_bookings = 0
 
-    # Simuliamo soggiorni dal 1 aprile al 31 maggio
     stay_date = datetime(2026, 4, 1)
 
     while stay_date <= datetime(2026, 5, 31):
+
         if stay_date < booking_date:
             stay_date += timedelta(days=1)
             continue
-            
-        stay_str = stay_date.strftime("%Y-%m-%d")
-        current_occupancy = st.session_state.daily_occupancy[stay_str]
 
-        # Skip se già tutto occupato
-        if current_occupancy >= st.session_state.total_rooms:
+        stay_str = stay_date.strftime("%Y-%m-%d")
+
+        current_occupancy = st.session_state.daily_occupancy[stay_str]
+        C = st.session_state.total_rooms
+        available = C - current_occupancy
+
+        if available <= 0:
             stay_date += timedelta(days=1)
             continue
 
-        available = st.session_state.total_rooms - current_occupancy
-        stay_price = st.session_state.prices.get(stay_str, 100)
+        p = st.session_state.prices.get(stay_str, 100)
 
-        # ===== PRICE ELASTICITY =====
-        price_0 = 120
+        # ===== PARAMETRI DOMANDA =====
+        n0 = st.session_state.get("market_demand", 80)
+        p0 = st.session_state.get("p0", 150)
         alpha = st.session_state.get("alpha", 0.02)
-        demand_fraction = 1 / (1 + math.exp(alpha * (stay_price - price_0)))
-        expected_total_demand = st.session_state.total_rooms * demand_fraction * 0.10
 
-        # ===== BOOKING WINDOW =====
+        # ===== SIGMOIDE DELLA DOMANDA =====
+        sigma = 1 / (1 + math.exp(alpha * (p - p0)))
+
+        # ===== CAMPIONAMENTO STOCASTICO =====
+        bookings = np.random.binomial(n=n0, p=sigma)
+
+        # ===== ADVANCE BOOKING EFFECT =====
         days_before = max(1, (stay_date - booking_date).days)
         time_factor = max(0.4, min(2.5, 20 / days_before))
 
-        # ===== SEASONALITY =====
+        bookings = int(bookings * time_factor)
+
+        # ===== STAGIONALITÀ =====
         season_factor = st.session_state.get(
             "season_april" if stay_date.month == 4 else "season_may", 1.0
         )
-        
-        # domanda potenziale
-        potential_demand = int(expected_total_demand * time_factor * season_factor * random.uniform(0.6, 1.4))
 
-        # Non superare mai le camere disponibili
-        new_bookings = min(potential_demand, available)
+        bookings = int(bookings * season_factor)
+
+        # ===== VINCOLO DI CAPACITÀ =====
+        new_bookings = min(bookings, available)
 
         if new_bookings > 0:
-            # registra prenotazioni per giorno di soggiorno
+
             st.session_state.bookings[stay_str][booking_str] = {
                 "rooms": new_bookings,
-                "price": stay_price
+                "price": p
             }
+
             st.session_state.daily_occupancy[stay_str] += new_bookings
-            revenue = new_bookings * stay_price
+
+            revenue = new_bookings * p
             st.session_state.daily_revenue[stay_str] += revenue
             st.session_state.total_revenue += revenue
-            total_new_bookings += new_bookings
 
-            # ✅ aggiorna pick-up giornaliero (prenotazioni ricevute oggi)
             st.session_state.daily_pickup[booking_str] += new_bookings
+
+            total_new_bookings += new_bookings
 
         stay_date += timedelta(days=1)
 
