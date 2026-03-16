@@ -591,18 +591,15 @@ def generate_bookings(booking_date):
         sigma = 1 / (1 + math.exp(alpha * (p - p0)))
 
         # ===== REGIME CAPACITY CONSTRAINT & CAMPIONAMENTO =====
-        if p <= p_so:
-            # prezzo troppo basso → sold-out teorico
-            bookings = C
-        else:
-            # prezzo alto → domanda stocastica sigmoidale
-            sigma = 1 / (1 + math.exp(alpha * (p - p0)))
-            bookings = np.random.binomial(n=n0, p=sigma)
+        sigma = 1 / (1 + math.exp(alpha * (p - p0)))
+        bookings = np.random.binomial(n=n0, p=sigma)
+
+        # Applica vincolo capacità
+        bookings = min(bookings, available)
 
         # ===== ADVANCE BOOKING EFFECT =====
         days_before = max(1, (stay_date - booking_date).days)
-        time_factor = max(0.4, min(2.5, 20 / days_before))
-
+        time_factor = max(0.4, min(1.0, 20 / days_before))
         bookings = int(bookings * time_factor)
 
         # ===== STAGIONALITÀ =====
