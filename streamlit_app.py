@@ -579,12 +579,30 @@ def generate_bookings(booking_date):
         n0 = st.session_state.get("market_demand", 80)
         p0 = st.session_state.get("p0", 150)
         alpha = st.session_state.get("alpha", 0.02)
+        C = st.session_state.total_rooms
+
+        # ===== PREZZO DI SELL-OUT (vincolo di capacità teorico) =====
+        if n0 > C:
+            p_so = p0 + (1 / alpha) * math.log(n0 / C - 1)
+        else:
+            p_so = float("inf")
 
         # ===== SIGMOIDE DELLA DOMANDA =====
         sigma = 1 / (1 + math.exp(alpha * (p - p0)))
 
+        # ===== REGIME CAPACITY CONSTRAINT =====
+        if p <= p_so:
+            # regime sold-out teorico: domanda >= capacità
+            expected_demand = C
+        else:
+            expected_demand = n0 * sigma
+
         # ===== CAMPIONAMENTO STOCASTICO =====
         bookings = np.random.binomial(n=n0, p=sigma)
+        if p <= p_so:
+            bookings = C
+        else:
+            bookings = np.random.binomial(n=n0, p=sigma)
 
         # ===== ADVANCE BOOKING EFFECT =====
         days_before = max(1, (stay_date - booking_date).days)
