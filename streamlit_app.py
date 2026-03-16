@@ -1109,11 +1109,15 @@ else:
     c3.metric(t("total_booked"), f"{total_occ}/{max_possible} ({occupancy_percentage:.1f}%)")
     c4.metric(t("total_revenue"), f"€{st.session_state.total_revenue:,.0f}")
 
-total_days = 61
-days_passed = (st.session_state.current_date - datetime(2026, 3, 1)).days
-progress = min(1, days_passed / total_days)
-st.progress(progress, text=f"Avanzamento: {days_passed}/{total_days} giorni")
+start_date = datetime(2026, 3, 1)
+end_date = datetime(2026, 5, 31)
 
+total_days = (end_date - start_date).days + 1  # Include il 1 marzo e il 31 maggio
+days_passed = (st.session_state.current_date - start_date).days + 1
+
+progress = min(1, days_passed / total_days)
+
+st.progress(progress, text=f"Avanzamento: {days_passed}/{total_days} giorni")
 if total_occ > 0:
     st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili in aprile")
 
