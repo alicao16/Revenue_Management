@@ -576,8 +576,8 @@ def generate_bookings(booking_date):
         p = st.session_state.prices.get(stay_str, 100)
 
         # ===== PARAMETRI DOMANDA =====
-        n0 = st.session_state.get("market_demand", 80)
-        p0 = st.session_state.get("p0", 150)
+        n0 = st.session_state.get("market_demand", 10)
+        p0 = st.session_state.get("p0", 100)
         alpha = st.session_state.get("alpha", 0.02)
         C = st.session_state.total_rooms
 
