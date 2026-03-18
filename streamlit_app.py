@@ -578,7 +578,7 @@ def generate_bookings(booking_date):
         # ===== PARAMETRI DOMANDA =====
         n0 = st.session_state.get("market_demand", 10)
         p0 = st.session_state.get("p0", 100)
-        alpha = st.session_state.get("alpha", 0.02)
+        alpha = st.session_state.get("alpha", 0.025)
         C = st.session_state.total_rooms
 
         # ===== PREZZO DI SELL-OUT (vincolo di capacità teorico) =====
@@ -601,13 +601,6 @@ def generate_bookings(booking_date):
         days_before = max(1, (stay_date - booking_date).days)
         time_factor = max(0.4, min(1.0, 20 / days_before))
         bookings = int(bookings * time_factor)
-
-        # ===== STAGIONALITÀ =====
-        season_factor = st.session_state.get(
-            "season_april" if stay_date.month == 4 else "season_may", 1.0
-        )
-
-        bookings = int(bookings * season_factor)
 
         # ===== VINCOLO DI CAPACITÀ =====
         new_bookings = min(bookings, available)
@@ -690,18 +683,18 @@ with st.sidebar:
 
     season_april = st.slider(
         "April demand",
-        min_value=0.5,
-        max_value=2.0,
-        value=st.session_state.get("season_april", 1.0),
-        step=0.1
+        min_value=0.02,
+        max_value=0.05,
+        value=st.session_state.get("season_april", 0.35),
+        step=0.05
     )
 
     season_may = st.slider(
         "May demand",
-        min_value=0.5,
-        max_value=2.0,
-        value=st.session_state.get("season_may", 1.2),
-        step=0.1
+        min_value=0.02,
+        max_value=0.05,
+        value=st.session_state.get("season_may", 0.3),
+        step=0.05
     )
 
     st.session_state.season_april = season_april
