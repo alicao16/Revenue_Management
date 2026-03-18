@@ -974,8 +974,8 @@ with tab1:
                     st.metric("📈 Giorno con più pickup", f"{peak_day} ({peak_value} camere)")
 
     # Mostra tabella dettagli con i pickup giornalieri
-    st.subheader("Dettaglio pickup giornaliero")
-    st.dataframe(df_pickup, use_container_width=True, hide_index=True)
+            st.subheader("Dettaglio pickup giornaliero")
+            st.dataframe(df_pickup, use_container_width=True, hide_index=True)
 
     # ===== Calcola revenue totale per questo giorno di soggiorno =====
     total_rev = 0
