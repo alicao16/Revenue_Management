@@ -898,70 +898,70 @@ with tab1:
             continue
     
     if stay_dates:
-    selected_stay = st.selectbox(
-        "Seleziona giorno di soggiorno per vedere il pickup cumulativo",
-        sorted(stay_dates, key=lambda x: datetime.strptime(x, "%Y-%m-%d")),
-        format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y"),
-        key="stay_select"
+        selected_stay = st.selectbox(
+            "Seleziona giorno di soggiorno per vedere il pickup cumulativo",
+            sorted(stay_dates, key=lambda x: datetime.strptime(x, "%Y-%m-%d")),
+            format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y"),
+            key="stay_select"
     )
 
-    if selected_stay and selected_stay in st.session_state.bookings:
-        bookings_for_stay = st.session_state.bookings[selected_stay]
+        if selected_stay and selected_stay in st.session_state.bookings:
+            bookings_for_stay = st.session_state.bookings[selected_stay]
 
-        # --- Creazione dati per il pickup chart ---
-        pickup_data = []
-        cumulative = 0
-        # ... (your existing code to build pickup_data) ...
+            # --- Creazione dati per il pickup chart ---
+            pickup_data = []
+            cumulative = 0
+            # ... (your existing code to build pickup_data) ...
 
-        if pickup_data:
-            # Creazione DataFrame e grafici
-            df_pickup = pd.DataFrame(pickup_data)
-            df_pickup["Data prenotazione_dt"] = pd.to_datetime(list(bookings_for_stay.keys()))
-            df_pickup.sort_values("Data prenotazione_dt", inplace=True)
+            if pickup_data:
+                # Creazione DataFrame e grafici
+                df_pickup = pd.DataFrame(pickup_data)
+                df_pickup["Data prenotazione_dt"] = pd.to_datetime(list(bookings_for_stay.keys()))
+                df_pickup.sort_values("Data prenotazione_dt", inplace=True)
 
             # Espansione spiegazione
-            with st.expander("📘 Cos'è il Pick-up?"):
-                st.markdown(...)
+                with st.expander("📘 Cos'è il Pick-up?"):
+                    st.markdown(...)
 
             # Colonne per grafici e metriche
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                st.subheader(f"Pick-up cumulativo per il {...}")
-                st.line_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up cumulativo"]])
-                st.subheader("Pick-up giornaliero")
-                st.bar_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up giornaliero"]])
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.subheader(f"Pick-up cumulativo per il {...}")
+                    st.line_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up cumulativo"]])
+                    st.subheader("Pick-up giornaliero")
+                    st.bar_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up giornaliero"]])
 
-            with col2:
+                with col2:
                 # Metriche riassuntive (assicurati che df_pickup non sia vuoto)
-                if not df_pickup.empty:
-                    total_rooms = df_pickup["Pick-up giornaliero"].sum()
-                    first_booking = df_pickup.iloc[0]["Data prenotazione"]
-                    last_booking = df_pickup.iloc[-1]["Data prenotazione"]
-                    peak_idx = df_pickup["Pick-up giornaliero"].idxmax()
-                    peak_day = df_pickup.loc[peak_idx, "Data prenotazione"]
-                    peak_value = df_pickup.loc[peak_idx, "Pick-up giornaliero"]
-                    st.metric("🏨 Totale camere prenotate", f"{total_rooms}")
-                    st.metric("📅 Prima prenotazione", first_booking)
-                    st.metric("📅 Ultima prenotazione", last_booking)
-                    st.metric("📈 Giorno con più pickup", f"{peak_day} ({peak_value} camere)")
+                    if not df_pickup.empty:
+                        total_rooms = df_pickup["Pick-up giornaliero"].sum()
+                        first_booking = df_pickup.iloc[0]["Data prenotazione"]
+                        last_booking = df_pickup.iloc[-1]["Data prenotazione"]
+                        peak_idx = df_pickup["Pick-up giornaliero"].idxmax()
+                        peak_day = df_pickup.loc[peak_idx, "Data prenotazione"]
+                        peak_value = df_pickup.loc[peak_idx, "Pick-up giornaliero"]
+                        st.metric("🏨 Totale camere prenotate", f"{total_rooms}")
+                        st.metric("📅 Prima prenotazione", first_booking)
+                        st.metric("📅 Ultima prenotazione", last_booking)
+                        st.metric("📈 Giorno con più pickup", f"{peak_day} ({peak_value} camere)")
 
             # Tabella dettagli
-            st.subheader("Dettaglio pickup giornaliero")
-            st.dataframe(df_pickup, use_container_width=True, hide_index=True)
+                st.subheader("Dettaglio pickup giornaliero")
+                st.dataframe(df_pickup, use_container_width=True, hide_index=True)
 
-        # ===== Calcola revenue totale per questo giorno di soggiorno =====
-        # Questo blocco DEVE essere dentro l'if esterno, subito dopo aver usato df_pickup
-        total_rev = 0
-        if isinstance(bookings_for_stay, dict):   # ora bookings_for_stay è definita
-            for data in bookings_for_stay.values():
-                if isinstance(data, dict):
-                    rooms = data.get("rooms", 0)
-                    price = data.get("price", st.session_state.prices.get(selected_stay, 100))
-                else:
-                    rooms = data
-                    price = st.session_state.prices.get(selected_stay, 100)
-                total_rev += rooms * price
-            st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
+            # ===== Calcola revenue totale per questo giorno di soggiorno =====
+            # Questo blocco DEVE essere dentro l'if esterno, subito dopo aver usato df_pickup
+            total_rev = 0
+            if isinstance(bookings_for_stay, dict):   # ora bookings_for_stay è definita
+                for data in bookings_for_stay.values():
+                    if isinstance(data, dict):
+                        rooms = data.get("rooms", 0)
+                        price = data.get("price", st.session_state.prices.get(selected_stay, 100))
+                    else:
+                        rooms = data
+                        price = st.session_state.prices.get(selected_stay, 100)
+                    total_rev += rooms * price
+                st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
 with tab2:
     st.subheader("Dettaglio prenotazioni per data di prenotazione")
     st.caption("Mostra tutte le prenotazioni fatte in una specifica data PER soggiorni futuri (aprile-maggio)")
