@@ -581,8 +581,7 @@ def generate_bookings(booking_date):
             season_factor = st.session_state.season_may
         else:
             season_factor = 1.0
-
-        n0 = n0 * season_factor  # applicato alla domanda di base
+n0 = n0 * season_factor  # applicato alla domanda di base
         # ===== PARAMETRI DOMANDA =====
         n0 = st.session_state.get("market_demand", 10)
         p0 = st.session_state.get("p0", 100)
