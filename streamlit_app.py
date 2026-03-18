@@ -935,70 +935,66 @@ with tab1:
                             "Pick-up cumulativo": cumulative
                         })
             
-            if pickup_data:
-                # Crea DataFrame con datetime reale
-                df_pickup = pd.DataFrame(pickup_data)
-                df_pickup["Data prenotazione_dt"] = pd.to_datetime(list(bookings_for_stay.keys()))
+    if pickup_data:
+    # Crea DataFrame con datetime reale
+        df_pickup = pd.DataFrame(pickup_data)
+        df_pickup["Data prenotazione_dt"] = pd.to_datetime(list(bookings_for_stay.keys()))
 
-                # Ordina per datetime
-                df_pickup.sort_values("Data prenotazione_dt", inplace=True)
-    
-                # Spiegazione del concetto di pickup con esempio
-                with st.expander("📘 Cos'è il Pick-up?"):
-                    st.markdown("""
-            **Pick-up giornaliero**: Nuove prenotazioni arrivate in una specifica data per questo giorno di soggiorno
-        
-                **Pick-up cumulativo**: Totale prenotazioni accumulate fino a quella data per questo giorno di soggiorno
-        """)
+    # Ordina per datetime
+        df_pickup.sort_values("Data prenotazione_dt", inplace=True)
 
-            # Mostra il grafico del pickup cumulativo
-            col1, col2 = st.columns([2, 1])
-    
-            with col1:
-                st.subheader(f"Pick-up cumulativo per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
-                # Usa la colonna datetime reale come indice
-                st.line_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up cumulativo"]])
-        
-                st.subheader("Pick-up giornaliero")
-                st.bar_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up giornaliero"]])
-    
-            with col2:
-                #Metriche riassuntive
-                total_rooms = df_pickup["Pick-up giornaliero"].sum()
-                first_booking = df_pickup.iloc[0]["Data prenotazione"] if not df_pickup.empty else "N/A"
-                last_booking = df_pickup.iloc[-1]["Data prenotazione"] if not df_pickup.empty else "N/A"
-                peak_day = df_pickup.loc[df_pickup["Pick-up giornaliero"].idxmax(), "Data prenotazione"] if not df_pickup.empty else "N/A"
-                peak_value = df_pickup["Pick-up giornaliero"].max() if not df_pickup.empty else 0
-        
+    # Spiegazione del concetto di pickup con esempio
+        with st.expander("📘 Cos'è il Pick-up?"):
+        st.markdown("""
+**Pick-up giornaliero**: Nuove prenotazioni arrivate in una specifica data per questo giorno di soggiorno
+
+**Pick-up cumulativo**: Totale prenotazioni accumulate fino a quella data per questo giorno di soggiorno
+""")
+
+    # Mostra il grafico del pickup cumulativo
+        col1, col2 = st.columns([2, 1])
+
+    with col1:
+        st.subheader(f"Pick-up cumulativo per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
+        st.line_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up cumulativo"]])
+
+        st.subheader("Pick-up giornaliero")
+        st.bar_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up giornaliero"]])
+
+    with col2:
+        # Metriche riassuntive
+        total_rooms = df_pickup["Pick-up giornaliero"].sum()
+        first_booking = df_pickup.iloc[0]["Data prenotazione"] if not df_pickup.empty else "N/A"
+        last_booking = df_pickup.iloc[-1]["Data prenotazione"] if not df_pickup.empty else "N/A"
+        peak_day = df_pickup.loc[df_pickup["Pick-up giornaliero"].idxmax(), "Data prenotazione"] if not df_pickup.empty else "N/A"
+        peak_value = df_pickup["Pick-up giornaliero"].max() if not df_pickup.empty else 0
+
         st.metric("🏨 Totale camere prenotate", f"{total_rooms}")
         st.metric("📅 Prima prenotazione", first_booking)
         st.metric("📅 Ultima prenotazione", last_booking)
         st.metric("📈 Giorno con più pickup", f"{peak_day} ({peak_value} camere)")
-    
+
     # Mostra tabella dettagli con i pickup giornalieri
     st.subheader("Dettaglio pickup giornaliero")
     st.dataframe(df_pickup, use_container_width=True, hide_index=True)
-                
-                # Calcola revenue totale per questo giorno
+
+    # ===== Calcola revenue totale per questo giorno di soggiorno =====
     total_rev = 0
+    if isinstance(bookings_for_stay, dict):
+        for data in bookings_for_stay.values():
+            if isinstance(data, dict):
+                rooms = data.get("rooms", 0)
+                price = data.get("price", st.session_state.prices.get(selected_stay, 100))
+            else:
+                rooms = data
+                price = st.session_state.prices.get(selected_stay, 100)
 
-if isinstance(bookings_for_stay, dict):
-    for data in bookings_for_stay.values():
-        if isinstance(data, dict):
-            rooms = data.get("rooms", 0)
-            price = data.get("price", st.session_state.prices.get(selected_stay, 100))
-        else:
-            rooms = data
-            price = st.session_state.prices.get(selected_stay, 100)
-        
-        total_rev += rooms * price
+            total_rev += rooms * price
 
-    if total_rev > 0:
-        st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
-    else:
-        st.info(f"Nessun dato di pickup per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
+    st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
+
 else:
-    st.info("Nessuna prenotazione registrata per aprile o maggio")
+    st.info(f"Nessun dato di pickup per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
 
 with tab2:
     st.subheader("Dettaglio prenotazioni per data di prenotazione")
