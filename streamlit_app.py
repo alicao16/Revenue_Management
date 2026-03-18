@@ -698,7 +698,7 @@ with st.sidebar:
         "Alpha (demand sensitivity to price)",
         min_value=0.01,
         max_value=0.10,
-        value=st.session_state.get("alpha", 0.03),
+        value=st.session_state.get("alpha", 0.07),
         step=0.005,
         help="Higher alpha → demand drops faster when price increases"
     )
