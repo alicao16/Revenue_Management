@@ -945,7 +945,7 @@ with tab1:
 
     # Spiegazione del concetto di pickup con esempio
         with st.expander("📘 Cos'è il Pick-up?"):
-        st.markdown("""
+            st.markdown("""
 **Pick-up giornaliero**: Nuove prenotazioni arrivate in una specifica data per questo giorno di soggiorno
 
 **Pick-up cumulativo**: Totale prenotazioni accumulate fino a quella data per questo giorno di soggiorno
