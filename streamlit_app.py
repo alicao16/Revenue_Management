@@ -685,7 +685,7 @@ with st.sidebar:
         "April demand",
         min_value=0.02,
         max_value=0.05,
-        value=st.session_state.get("season_april", 0.035),
+        value=st.session_state.get("season_april", 0.03),
         step=0.05
     )
 
