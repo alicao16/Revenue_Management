@@ -981,23 +981,24 @@ with tab1:
                 
                 # Calcola revenue totale per questo giorno
     total_rev = 0
-    if isinstance(bookings_for_stay, dict):
-        for data in bookings_for_stay.values():
-            if isinstance(data, dict):
-                rooms = data.get("rooms", 0)
-                price = data.get("price", st.session_state.prices.get(selected_stay, 100))
-                total_rev += rooms * price
-            else:
-                # Se è un intero, usa il prezzo corrente
-                rooms = data
-                price = st.session_state.prices.get(selected_stay, 100)
-                total_rev += rooms * price
-                
-                st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
-            else:
-                st.info(f"Nessun dato di pickup per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
+
+if isinstance(bookings_for_stay, dict):
+    for data in bookings_for_stay.values():
+        if isinstance(data, dict):
+            rooms = data.get("rooms", 0)
+            price = data.get("price", st.session_state.prices.get(selected_stay, 100))
+        else:
+            rooms = data
+            price = st.session_state.prices.get(selected_stay, 100)
+        
+        total_rev += rooms * price
+
+    if total_rev > 0:
+        st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
     else:
-        st.info("Nessuna prenotazione registrata per aprile o maggio")
+        st.info(f"Nessun dato di pickup per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
+else:
+    st.info("Nessuna prenotazione registrata per aprile o maggio")
 
 with tab2:
     st.subheader("Dettaglio prenotazioni per data di prenotazione")
