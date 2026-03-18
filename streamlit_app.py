@@ -1121,7 +1121,7 @@ st.progress(progress, text=f"Avanzamento: {days_passed}/{total_days} giorni")
 if total_occ > 0:
     st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili in aprile")
 
-if st.session_state.current_date > datetime(2026, 4, 30):
+if st.session_state.current_date > datetime(2026, 5, 31):
     st.balloons()
     st.success(t("game_end").format(revenue=st.session_state.total_revenue))
     
