@@ -942,10 +942,6 @@ with tab1:
 
                 # Ordina per datetime
                 df_pickup.sort_values("Data prenotazione_dt", inplace=True)
-
-                # Imposta l'indice datetime per il grafico
-                st.line_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up cumulativo"]])
-                st.bar_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up giornaliero"]])
                 
                 # Spiegazione del concetto di pickup con esempio
                 with st.expander("📘 Cos'è il Pick-up?"):
