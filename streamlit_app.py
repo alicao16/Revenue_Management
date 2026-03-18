@@ -578,7 +578,7 @@ def generate_bookings(booking_date):
         # ===== PARAMETRI DOMANDA =====
         n0 = st.session_state.get("market_demand", 10)
         p0 = st.session_state.get("p0", 100)
-
+        alpha = st.session_state.get("alpha", 0.03)
         C = st.session_state.total_rooms
 
         # ===== PREZZO DI SELL-OUT (vincolo di capacità teorico) =====
