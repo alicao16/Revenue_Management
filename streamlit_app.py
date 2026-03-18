@@ -936,15 +936,15 @@ with tab1:
                         })
             
             if pickup_data:
-            # Crea DataFrame con datetime reale
-            df_pickup = pd.DataFrame(pickup_data)
-            df_pickup["Data prenotazione_dt"] = pd.to_datetime(list(bookings_for_stay.keys()))
+                # Crea DataFrame con datetime reale
+                df_pickup = pd.DataFrame(pickup_data)
+                df_pickup["Data prenotazione_dt"] = pd.to_datetime(list(bookings_for_stay.keys()))
 
-            # Ordina per datetime
-            df_pickup.sort_values("Data prenotazione_dt", inplace=True)
+                # Ordina per datetime
+                df_pickup.sort_values("Data prenotazione_dt", inplace=True)
     
-            # Spiegazione del concetto di pickup con esempio
-            with st.expander("📘 Cos'è il Pick-up?"):
+                # Spiegazione del concetto di pickup con esempio
+                with st.expander("📘 Cos'è il Pick-up?"):
                 st.markdown("""
                 **Pick-up giornaliero**: Nuove prenotazioni arrivate in una specifica data per questo giorno di soggiorno
         
