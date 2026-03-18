@@ -683,18 +683,18 @@ with st.sidebar:
 
     season_april = st.slider(
         "April demand",
-        min_value=0.05,
-        max_value=0.40,
-        value=st.session_state.get("season_april", 0.05),
-        step=0.05
+        min_value=0.30,
+        max_value=1.50,
+        value=st.session_state.get("season_april", 0.70),
+        step=0.1
     )
 
     season_may = st.slider(
         "May demand",
-        min_value=0.05,
-        max_value=0.40,
-        value=st.session_state.get("season_may", 0.05),
-        step=0.05
+        min_value=0.30,
+        max_value=1.50,
+        value=st.session_state.get("season_may", 0.70),
+        step=0.1
     )
 
     st.session_state.season_april = season_april
