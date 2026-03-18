@@ -586,19 +586,20 @@ def generate_bookings(booking_date):
         # ===== PARAMETRI DOMANDA =====
         n0 = st.session_state.get("market_demand", 10)
         p0 = st.session_state.get("p0", 100)
-        # ===== Sidebar: Game Controls =====
-        st.subheader("📈 Demand Curve Steepness")
+        with st.sidebar:
+            st.divider()
+            st.subheader("📈 Demand Curve Steepness")
 
-        alpha = st.slider(
-        "Alpha (demand sensitivity to price)",
-        min_value=0.01,
-        max_value=0.10,
-        value=st.session_state.get("alpha", 0.03),
-        step=0.005,
-        help="Higher alpha → demand drops faster when price increases"
-)
-
-        st.session_state.alpha = alpha
+            # Alpha slider
+            alpha = st.slider(
+                "Alpha (demand sensitivity to price)",
+                min_value=0.01,
+                max_value=0.10,
+                value=st.session_state.get("alpha", 0.03),
+                step=0.005,
+                help="Higher alpha → demand drops faster when price increases"
+            )
+            st.session_state.alpha = alpha
         
         C = st.session_state.total_rooms
 
