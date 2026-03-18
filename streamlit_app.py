@@ -936,7 +936,16 @@ with tab1:
                         })
             
             if pickup_data:
+                # Crea DataFrame con datetime reale
                 df_pickup = pd.DataFrame(pickup_data)
+                df_pickup["Data prenotazione_dt"] = pd.to_datetime([datetime.strptime(d, "%Y-%m-%d") for d in bookings_for_stay.keys()])
+
+                # Ordina per datetime
+                df_pickup.sort_values("Data prenotazione_dt", inplace=True)
+
+                # Imposta l'indice datetime per il grafico
+                st.line_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up cumulativo"]])
+                st.bar_chart(df_pickup.set_index("Data prenotazione_dt")[["Pick-up giornaliero"]])
                 
                 # Spiegazione del concetto di pickup con esempio
                 with st.expander("📘 Cos'è il Pick-up?"):
