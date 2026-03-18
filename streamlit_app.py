@@ -524,7 +524,7 @@ if "init" not in st.session_state:
     st.session_state.language = "it"
     st.session_state.game_running = False
     st.session_state.current_date = datetime(2026, 3, 1)
-    st.session_state.total_rooms = 30  # Valore iniziale predefinito
+    st.session_state.total_rooms = 50  # Valore iniziale predefinito
     st.session_state.total_revenue = 0
     st.session_state.user_id = None
     st.session_state.user_email = None
@@ -672,7 +672,7 @@ with st.sidebar:
     rooms_value = st.number_input(
         t("total_rooms"),
         min_value=1,
-        max_value=300,
+        max_value=300,x
         value=st.session_state.total_rooms,
         step=1,
         disabled=st.session_state.game_running,
@@ -683,17 +683,17 @@ with st.sidebar:
 
     season_april = st.slider(
         "April demand",
-        min_value=0.02,
-        max_value=0.05,
-        value=st.session_state.get("season_april", 0.03),
+        min_value=0.05,
+        max_value=0.40,
+        value=st.session_state.get("season_april", 0.05),
         step=0.05
     )
 
     season_may = st.slider(
         "May demand",
-        min_value=0.02,
-        max_value=0.05,
-        value=st.session_state.get("season_may", 0.03),
+        min_value=0.05,
+        max_value=0.40,
+        value=st.session_state.get("season_may", 0.05),
         step=0.05
     )
 
