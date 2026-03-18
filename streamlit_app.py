@@ -578,7 +578,7 @@ def generate_bookings(booking_date):
         # ===== PARAMETRI DOMANDA =====
         n0 = st.session_state.get("market_demand", 10)
         p0 = st.session_state.get("p0", 100)
-        alpha = st.session_state.get("alpha", 0.025)
+
         C = st.session_state.total_rooms
 
         # ===== PREZZO DI SELL-OUT (vincolo di capacità teorico) =====
@@ -685,7 +685,7 @@ with st.sidebar:
         "April demand",
         min_value=0.02,
         max_value=0.05,
-        value=st.session_state.get("season_april", 0.35),
+        value=st.session_state.get("season_april", 0.035),
         step=0.05
     )
 
@@ -693,7 +693,7 @@ with st.sidebar:
         "May demand",
         min_value=0.02,
         max_value=0.05,
-        value=st.session_state.get("season_may", 0.3),
+        value=st.session_state.get("season_may", 0.03),
         step=0.05
     )
 
