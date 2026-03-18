@@ -980,8 +980,8 @@ with tab1:
     st.dataframe(df_pickup, use_container_width=True, hide_index=True)
                 
                 # Calcola revenue totale per questo giorno
-            total_rev = 0
-                if isinstance(bookings_for_stay, dict):
+    total_rev = 0
+        if isinstance(bookings_for_stay, dict):
                     for data in bookings_for_stay.values():
                         if isinstance(data, dict):
                             rooms = data.get("rooms", 0)
