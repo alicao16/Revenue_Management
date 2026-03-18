@@ -588,17 +588,8 @@ n0 = n0 * season_factor  # applicato alla domanda di base
         with st.sidebar:
             st.divider()
             st.subheader("📈 Demand Curve Steepness")
-
-            # Alpha slider
-            alpha = st.slider(
-                "Alpha (demand sensitivity to price)",
-                min_value=0.01,
-                max_value=0.10,
-                value=st.session_state.get("alpha", 0.03),
-                step=0.005,
-                help="Higher alpha → demand drops faster when price increases"
-            )
-            st.session_state.alpha = alpha
+        alpha = st.session_state.get("alpha", 0.03)
+            
         
         C = st.session_state.total_rooms
 
