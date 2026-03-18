@@ -992,9 +992,8 @@ with tab1:
             total_rev += rooms * price
 
     st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
-
-else:
-    st.info(f"Nessun dato di pickup per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
+    else:
+        st.info(f"Nessun dato di pickup per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
 
 with tab2:
     st.subheader("Dettaglio prenotazioni per data di prenotazione")
