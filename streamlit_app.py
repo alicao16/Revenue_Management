@@ -574,24 +574,25 @@ def generate_bookings(booking_date):
             continue
 
         p = st.session_state.prices.get(stay_str, 100)
-        # esempio
+
+        # Season factor
         if stay_date.month == 4:
             season_factor = st.session_state.season_april
         elif stay_date.month == 5:
             season_factor = st.session_state.season_may
         else:
             season_factor = 1.0
-        n0 = n0 * season_factor  # applicato alla domanda di base
-# ===== PARAMETRI DOMANDA =====
-            n0 = st.session_state.get("market_demand", 10)
-            p0 = st.session_state.get("p0", 100)
-        with st.sidebar:
-            st.divider()
-            st.subheader("📈 Demand Curve Steepness")
-        alpha = st.session_state.get("alpha", 0.03)
-            
-        
+
+        # Parameters
+        n0 = st.session_state.get("market_demand", 10)  # base demand
+        p0 = st.session_state.get("p0", 100)           # reference price
+        alpha = st.session_state.get("alpha", 0.03)    # demand sensitivity
         C = st.session_state.total_rooms
+
+        # Apply seasonality
+        n0 = n0 * season_factor
+
+
 
         # ===== PREZZO DI SELL-OUT (vincolo di capacità teorico) =====
         if n0 > C:
