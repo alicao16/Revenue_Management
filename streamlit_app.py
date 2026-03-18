@@ -952,7 +952,7 @@ with tab1:
 """)
 
     # Mostra il grafico del pickup cumulativo
-col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([2, 1])
 
     with col1:
         st.subheader(f"Pick-up cumulativo per il {datetime.strptime(selected_stay, '%Y-%m-%d').strftime('%d %b %Y')}")
