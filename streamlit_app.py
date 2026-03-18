@@ -584,9 +584,9 @@ def generate_bookings(booking_date):
             season_factor = 1.0
 
         # Parameters
-        n0 = st.session_state.get("market_demand", 10)  # base demand
+        n0 = st.session_state.get("market_demand", 5)  # base demand
         p0 = st.session_state.get("p0", 100)           # reference price
-        alpha = st.session_state.get("alpha", 0.03)    # demand sensitivity
+        alpha = st.session_state.get("alpha", 0.07)    # demand sensitivity
         C = st.session_state.total_rooms
 
         # Apply seasonality
