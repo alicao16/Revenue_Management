@@ -586,7 +586,7 @@ def generate_bookings(booking_date):
         # Parameters
         n0 = st.session_state.get("market_demand", 5)  # base demand
         p0 = st.session_state.get("p0", 100)           # reference price
-        alpha = st.session_state.get("alpha", 0.07)    # demand sensitivity
+        alpha = st.session_state.get("alpha", 0.1)    # demand sensitivity
         C = st.session_state.total_rooms
 
         # Apply seasonality
@@ -698,10 +698,10 @@ with st.sidebar:
     # Alpha slider
         alpha = st.slider(
             "Alpha (demand sensitivity to price)",
-            min_value=0.01,
-            max_value=0.10,
-            value=st.session_state.get("alpha", 0.03),
-            step=0.005,
+            min_value=0.1,
+            max_value=1,
+            value=st.session_state.get("alpha", 0.3),
+            step=0.1,
             help="Higher alpha → demand drops faster when price increases"
         )
         st.session_state.alpha = alpha
