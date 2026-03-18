@@ -899,10 +899,10 @@ with tab1:
     
     if stay_dates:
         selected_stay = st.selectbox(
-            "Seleziona giorno di soggiorno per vedere il pickup cumulativo",
-            sorted(stay_dates),
-            format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y"),
-            key="stay_select"
+        "Seleziona giorno di soggiorno per vedere il pickup cumulativo",
+        sorted(stay_dates, key=lambda x: datetime.strptime(x, "%Y-%m-%d")),
+        format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y"),
+        key="stay_select"
         )
         
         if selected_stay and selected_stay in st.session_state.bookings:
