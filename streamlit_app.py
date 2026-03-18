@@ -556,7 +556,7 @@ def generate_bookings(booking_date):
     total_new_bookings = 0
 
     stay_date = datetime(2026, 4, 1)
-    pickup_data = []  # sempre definito
+    
     while stay_date <= datetime(2026, 5, 31):
     
         if stay_date < booking_date:
@@ -934,7 +934,7 @@ with tab1:
                             "Pick-up giornaliero": rooms,
                             "Pick-up cumulativo": cumulative
                         })
-            
+    pickup_data = []  # sempre definito        
     if pickup_data:
     # Crea DataFrame con datetime reale
         df_pickup = pd.DataFrame(pickup_data)
