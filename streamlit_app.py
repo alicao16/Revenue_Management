@@ -86,7 +86,7 @@ TRANSLATIONS = {
         "booking_from": "Prenotazioni dal",
         "total_for_day": "Totale giornata",
         "rooms": "camere",
-        "april_only": "📅 Ad aprile si gioca! Imposta i prezzi ogni giorno, monitora l'occupazione e conquista la classifica. Le prenotazioni partono a marzo, ma i soggiorni sono ad aprile e maggio per simulare un hotel già operativo.",
+        "april_only": "📅 Ad aprile si gioca! Imposta i prezzi ogni giorno, monitora l'occupazione e conquista la classifica. Le prenotazioni partono a marzo, ma i soggiorni sono ad aprile per simulare un hotel già operativo.",
         "instructions": "Imposta i prezzi ogni giorno e cerca di massimizzare il revenue. Buona fortuna!",
         "login": "🔐 Accedi al tuo Profilo",
         "email": "📧 Email",
@@ -532,8 +532,8 @@ if "init" not in st.session_state:
     st.session_state.auth_tab = "login"
     
     st.session_state.prices = {}
-    d = datetime(2026, 3, 1)
-    while d <= datetime(2026, 5, 31):
+    d = datetime(2026, 4, 1)
+    while d <= datetime(2026, 4, 30):
         st.session_state.prices[d.strftime("%Y-%m-%d")] = 100
         d += timedelta(days=1)
     
@@ -557,7 +557,7 @@ def generate_bookings(booking_date):
 
     stay_date = datetime(2026, 4, 1)
     
-    while stay_date <= datetime(2026, 5, 31):
+    while stay_date <= datetime(2026, 4, 30):
     
         if stay_date < booking_date:
             stay_date += timedelta(days=1)
@@ -576,12 +576,8 @@ def generate_bookings(booking_date):
         p = st.session_state.prices.get(stay_str, 100)
 
         # Season factor
-        if stay_date.month == 4:
             season_factor = st.session_state.season_april
-        elif stay_date.month == 5:
-            season_factor = st.session_state.season_may
-        else:
-            season_factor = 1.0
+        
 
         # Parameters
         n0 = st.session_state.get("market_demand", 5)  # base demand
@@ -713,15 +709,9 @@ with st.sidebar:
         value=st.session_state.get("season_april", 0.70),
         step=0.05
     )
-    season_may = st.slider(
-        "May demand",
-        min_value=0.30,
-        max_value=1.50,
-        value=st.session_state.get("season_may", 0.70),
-        step=0.05
-    )
+    
     st.session_state.season_april = season_april
-    st.session_state.season_may = season_may
+
 
     st.divider()
     st.subheader("🎮 Game Controls")
@@ -774,13 +764,7 @@ giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 
 # mese visualizzato
 if "calendar_month" not in st.session_state:
-    st.session_state.calendar_month = 3  # Start with March
-
-
-def change_month(delta):
-    new_month = st.session_state.calendar_month + delta
-    if 3 <= new_month <= 5:  # Include March, April, May
-        st.session_state.calendar_month = new_month
+    st.session_state.calendar_month = 4  # April
 
 
 def draw_calendar(month):
@@ -790,21 +774,8 @@ def draw_calendar(month):
     # trova il lunedì della prima settimana
     start = first_day - timedelta(days=first_day.weekday())
 
-    # intestazione mese con frecce
-    col1, col2, col3 = st.columns([1,4,1])
-
-    with col1:
-        if st.button("⬅️", key="prev_month"):
-            change_month(-1)
-
-    with col2:
-        month_names = {3: "MARZO 2026", 4: "APRILE 2026", 5: "MAGGIO 2026"}
-        st.subheader(month_names.get(month, first_day.strftime("%B %Y").upper()))
-
-    with col3:
-        if st.button("➡️", key="next_month"):
-            change_month(1)
-
+    st.subheader("🌸 APRILE 2026")
+    
     # intestazione giorni settimana
     cols = st.columns(7)
     for i, g in enumerate(giorni):
@@ -821,27 +792,19 @@ def draw_calendar(month):
                     date_str = d.strftime("%Y-%m-%d")
                     occ = st.session_state.daily_occupancy.get(date_str, 0)
                     rooms = st.session_state.total_rooms
+                    date_str = d.strftime("%Y-%m-%d")
+                    occ = st.session_state.daily_occupancy.get(date_str, 0)
+                    rooms = st.session_state.total_rooms
 
-                    if month == 3:  # March - view only, no price input
-                        st.markdown(f"**{d.day}**")
-                        # Occupazione
-                        if occ == 0:
-                            st.caption(f"🟢 {occ}/{rooms}")
-                        elif occ < rooms:
-                            st.caption(f"🟡 {occ}/{rooms}")
-                        else:
-                            st.caption(f"🔴 {occ}/{rooms}")
-                        st.caption("📅 solo pickup")
-                    else:  # April & May - price input
-                        price = st.number_input(
-                            f"{d.day}",
-                            min_value=10,
-                            max_value=500,
-                            step=5,
-                            value=st.session_state.prices.get(date_str, 100),
-                            key=f"price_{date_str}"
-                        )
-                        st.session_state.prices[date_str] = price
+                    price = st.number_input(
+                    f"{d.day}",
+                    min_value=10,
+                    max_value=500,
+                    step=5,
+                    value=st.session_state.prices.get(date_str, 100),
+                    key=f"price_{date_str}"
+                    )
+                    st.session_state.prices[date_str] = price
 
                         # occupazione
                         if occ == 0:
@@ -859,7 +822,7 @@ def draw_calendar(month):
             break
 
 
-draw_calendar(st.session_state.calendar_month)
+draw_calendar(4)
 
 
 # ===== PICKUP CHART =====
@@ -872,12 +835,12 @@ with tab1:
     st.subheader("Pickup Chart - Accumulo prenotazioni nel tempo")
     st.caption("Mostra come si accumulano le prenotazioni giorno per giorno per uno specifico giorno di soggiorno")
     
-    # Raccogli tutte le date di soggiorno (aprile-maggio) che hanno prenotazioni
+    # Raccogli tutte le date di soggiorno (aprile) che hanno prenotazioni
     stay_dates = []
     for stay_date, bookings in st.session_state.bookings.items():
         try:
             date_obj = datetime.strptime(stay_date, "%Y-%m-%d")
-            if date_obj.month in [4, 5]:  # Solo aprile e maggio
+            if date_obj.month in [4]:  # Solo aprile e
                 # Verifica se ci sono prenotazioni
                 has_bookings = False
                 if isinstance(bookings, dict):
@@ -987,7 +950,7 @@ with tab1:
                 st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
 with tab2:
     st.subheader("Dettaglio prenotazioni per data di prenotazione")
-    st.caption("Mostra tutte le prenotazioni fatte in una specifica data PER soggiorni futuri (aprile-maggio)")
+    st.caption("Mostra tutte le prenotazioni fatte in una specifica data PER soggiorni futuri (aprile)")
     
     # Usa lo STESSO mese selezionato nel calendario "Imposta prezzi"
     selected_month = st.session_state.calendar_month
@@ -1067,7 +1030,7 @@ with tab2:
             else:
                 st.info(f"Nessuna prenotazione trovata per il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}")
     else:
-        month_names = {3: "marzo", 4: "aprile", 5: "maggio"}
+        month_names = {3: "marzo", 4: "aprile""}
         st.info(f"Nessuna prenotazione registrata a {month_names.get(selected_month, '')} {datetime(2026, selected_month, 1).strftime('%Y')}")
 
 st.divider()
@@ -1103,7 +1066,7 @@ else:
 start_date = datetime(2026, 3, 1)
 end_date = datetime(2026, 5, 31)
 
-total_days = (end_date - start_date).days + 1  # Include il 1 marzo e il 31 maggio
+total_days = (end_date - start_date).days + 1  # Include il 1 aprile e il 30 aprile
 days_passed = (st.session_state.current_date - start_date).days + 1
 
 progress = min(1, days_passed / total_days)
