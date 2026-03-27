@@ -915,7 +915,7 @@ with tab1:
 
                 col1, col2 = st.columns([2, 1])
                 with col1:
-                    st.subheader(f"Pick-up cumulativo per il {...}")
+                    st.subheader(f"Pick-up cumulativo per la data di soggiorno selezionata")
                     st.line_chart(df_pickup[["Pick-up cumulativo"]])
                     st.subheader("Pick-up giornaliero")
                     st.bar_chart(df_pickup[["Pick-up giornaliero"]])
@@ -1075,7 +1075,7 @@ st.progress(progress, text=f"Avanzamento: {days_passed}/{total_days} giorni")
 if total_occ > 0:
     st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili in aprile")
 
-if st.session_state.current_date > datetime(2026, 5, 31):
+if st.session_state.current_date > datetime(2026, 4, 30):
     st.balloons()
     st.success(t("game_end").format(revenue=st.session_state.total_revenue))
     
