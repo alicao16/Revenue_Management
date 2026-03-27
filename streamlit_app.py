@@ -652,7 +652,7 @@ def advance_day():
 
 def reset_game():
     st.session_state.game_running = False
-    st.session_state.current_date = datetime(2026, 4, 1)
+    st.session_state.current_date = datetime(2026, 3, 1)
     st.session_state.total_revenue = 0
     st.session_state.bookings = defaultdict(lambda: defaultdict(int))
     st.session_state.daily_occupancy = defaultdict(int)
