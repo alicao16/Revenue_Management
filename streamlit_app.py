@@ -125,6 +125,10 @@ TRANSLATIONS = {
         "score_value": "Punteggio",
         "next_day": "⏭️ Avanti (Prossimo Giorno)",
         "pickup": "📈 Pick‑up prenotazioni",
+        "pickup_explanation": "Mostra come si accumulano le prenotazioni giorno per giorno per uno specifico giorno di soggiorno",
+        "booking_explanation": "Mostra tutte le prenotazioni fatte in una specifica data per soggiorni futuri (aprile)",
+        "no_bookings_month": "Nessuna prenotazione registrata ad aprile 2026"
+        "progress_label": "Avanzamento",
     },
     "en": {
         "title": "🏨 Hotel Revenue Management Game",
@@ -214,6 +218,10 @@ TRANSLATIONS = {
         "score_value": "Score",
         "next_day": "⏭️ Next Day",
         "pickup": "📈 Booking pick-up",
+        "pickup_explanation": "Shows how bookings accumulate day by day for a specific stay date",
+        "booking_explanation": "Shows all bookings made on a specific date for future stays (April)",
+        "no_bookings_month": "No bookings recorded in April 2026",
+        "progress_label": "Progress",
     }
 }
 
@@ -523,7 +531,7 @@ st.caption(t("instructions"))
 if "init" not in st.session_state:
     st.session_state.language = "it"
     st.session_state.game_running = False
-    st.session_state.current_date = datetime(2026, 3, 1)
+    st.session_state.current_date = datetime(2026, 4, 1)
     st.session_state.total_rooms = 50  # Valore iniziale predefinito
     st.session_state.total_revenue = 0
     st.session_state.user_id = None
@@ -724,7 +732,7 @@ with st.sidebar:
             st.session_state.paused_elapsed = 0
 
     if st.button(t("next_day"), use_container_width=True):
-        if st.session_state.current_date <= datetime(2026, 5, 31):
+        if st.session_state.current_date <= datetime(2026, 4, 30):
             advance_day()
             st.rerun()
         else:
@@ -833,7 +841,7 @@ tab1, tab2 = st.tabs(["📈 Pickup Chart (cumulativo per giorno di soggiorno)", 
 
 with tab1:
     st.subheader("Pickup Chart - Accumulo prenotazioni nel tempo")
-    st.caption("Mostra come si accumulano le prenotazioni giorno per giorno per uno specifico giorno di soggiorno")
+    st.caption(t("pickup_explanation"))
     
     # Raccogli tutte le date di soggiorno (aprile) che hanno prenotazioni
     stay_dates = []
@@ -950,7 +958,7 @@ with tab1:
                 st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
 with tab2:
     st.subheader("Dettaglio prenotazioni per data di prenotazione")
-    st.caption("Mostra tutte le prenotazioni fatte in una specifica data PER soggiorni futuri (aprile)")
+    st.caption(t("booking_explanation"))
     
     # Usa lo STESSO mese selezionato nel calendario "Imposta prezzi"
     selected_month = st.session_state.calendar_month
@@ -1031,7 +1039,7 @@ with tab2:
                 st.info(f"Nessuna prenotazione trovata per il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}")
     else:
         month_names = {3: "marzo", 4: "aprile"}
-        st.info(f"Nessuna prenotazione registrata a {month_names.get(selected_month, '')} {datetime(2026, selected_month, 1).strftime('%Y')}")
+        st.info(t("no_bookings_month"))
 
 st.divider()
 
@@ -1064,14 +1072,14 @@ else:
     c4.metric(t("total_revenue"), f"€{st.session_state.total_revenue:,.0f}")
 
 start_date = datetime(2026, 3, 1)
-end_date = datetime(2026, 5, 31)
+end_date = datetime(2026, 4, 30)
 
 total_days = (end_date - start_date).days + 1  # Include il 1 aprile e il 30 aprile
 days_passed = (st.session_state.current_date - start_date).days + 1
 
 progress = min(1, days_passed / total_days)
 
-st.progress(progress, text=f"Avanzamento: {days_passed}/{total_days} giorni")
+st.progress(progress, text=f"{t('progress_label')}: {days_passed}/{total_days} giorni")
 if total_occ > 0:
     st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili in aprile")
 
