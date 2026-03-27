@@ -806,13 +806,13 @@ def draw_calendar(month):
                     )
                     st.session_state.prices[date_str] = price
 
-                        # occupazione
-                        if occ == 0:
-                            st.caption(f"🟢 {occ}/{rooms}")
-                        elif occ < rooms:
-                            st.caption(f"🟡 {occ}/{rooms}")
-                        else:
-                            st.caption(f"🔴 {occ}/{rooms}")
+                    # occupazione
+                    if occ == 0:
+                        st.caption(f"🟢 {occ}/{rooms}")
+                    elif occ < rooms:
+                        st.caption(f"🟡 {occ}/{rooms}")
+                    else:
+                        st.caption(f"🔴 {occ}/{rooms}")
                 else:
                     st.write("")
 
