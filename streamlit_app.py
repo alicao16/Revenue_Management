@@ -127,7 +127,7 @@ TRANSLATIONS = {
         "pickup": "📈 Pick‑up prenotazioni",
         "pickup_explanation": "Mostra come si accumulano le prenotazioni giorno per giorno per uno specifico giorno di soggiorno",
         "booking_explanation": "Mostra tutte le prenotazioni fatte in una specifica data per soggiorni futuri (aprile)",
-        "no_bookings_month": "Nessuna prenotazione registrata ad aprile 2026"
+        "no_bookings_month": "Nessuna prenotazione registrata ad aprile 2026",
         "progress_label": "Avanzamento",
     },
     "en": {
