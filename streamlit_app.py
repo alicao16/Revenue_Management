@@ -576,7 +576,7 @@ def generate_bookings(booking_date):
         p = st.session_state.prices.get(stay_str, 100)
 
         # Season factor
-            season_factor = st.session_state.season_april
+        season_factor = st.session_state.season_april
         
 
         # Parameters
