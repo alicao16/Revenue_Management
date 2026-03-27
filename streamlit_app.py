@@ -1030,7 +1030,7 @@ with tab2:
             else:
                 st.info(f"Nessuna prenotazione trovata per il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}")
     else:
-        month_names = {3: "marzo", 4: "aprile""}
+        month_names = {3: "marzo", 4: "aprile"}
         st.info(f"Nessuna prenotazione registrata a {month_names.get(selected_month, '')} {datetime(2026, selected_month, 1).strftime('%Y')}")
 
 st.divider()
