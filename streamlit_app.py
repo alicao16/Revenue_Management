@@ -1038,11 +1038,11 @@ st.divider()
 st.header(t("current_state"))
 
 total_occ = sum(st.session_state.daily_occupancy.values())
-max_possible = st.session_state.total_rooms * 61  # Solo aprile ha 30 giorni
+max_possible = st.session_state.total_rooms * 30  # Solo aprile ha 30 giorni
 occupancy_percentage = (total_occ / max_possible * 100) if max_possible > 0 else 0
 
-if st.session_state.current_date <= datetime(2026, 5, 31):
-    days_left = (datetime(2026, 5, 31) - st.session_state.current_date).days
+if st.session_state.current_date <= datetime(2026, 4, 30):
+    days_left = (datetime(2026, 4, 30) - st.session_state.current_date).days
 else:
     days_left = 0
 
