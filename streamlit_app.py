@@ -636,7 +636,7 @@ def generate_bookings(booking_date):
     return total_new_bookings
 
 def advance_day():
-    if st.session_state.current_date <= datetime(2026, 5, 31):
+    if st.session_state.current_date <= datetime(2026, 4, 30):
         new_bookings = generate_bookings(st.session_state.current_date)
         st.session_state.current_date += timedelta(days=1)
         return new_bookings
