@@ -1038,6 +1038,11 @@ if st.session_state.user_id:
     user_stats = get_user_stats(st.session_state.user_id)
     if user_stats:
         username, email, best_score, games_played, created_at, last_game = user_stats
+        st.session_state.best_score = best_score
+        st.session_state.games_played = games_played
+        st.session_state.user_email = email
+        st.session_state.created_at = created_at
+        st.session_state.last_game = last_game
         if st.session_state.total_revenue > best_score:
             update_user_stats(st.session_state.user_id, st.session_state.total_revenue)
             st.success(f"🎉 Nuovo record! Best score aggiornato a €{st.session_state.total_revenue:,.0f}")
