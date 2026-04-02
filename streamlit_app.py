@@ -446,8 +446,12 @@ def show_login_ui():
             stats = get_user_stats(st.session_state.user_id)
             if stats:
                 username, email, best_score, games_played, created_at, last_game = stats
+                st.session_state.best_score = best_score or 0
+                st.session_state.games_played = games_played or 0
+                st.session_state.user_email = email
+                st.session_state.created_at = created_at
+                st.session_state.last_game = last_game
 
-                col1, col2 = st.columns(2)
                 col1, col2 = st.columns(2)
                 with col1:
                     st.metric(t("best_score"), f"€{st.session_state.get('best_score', 0):,.0f}")
