@@ -18,7 +18,7 @@ import sys
 from supabase import create_client, Client
 
 @st.cache_resource
-def get_supabase_client() -> Client
+def get_supabase_client() -> Client:
 
     url = "https://drvaaneglmpjelqfmget.supabase.co"
     key = "sb_publishable_VReG-vrtPzK8JxBDI5L8nQ_SbAU5PCM"
