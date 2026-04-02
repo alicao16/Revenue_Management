@@ -1030,24 +1030,34 @@ if total_occ > 0:
 
 if st.session_state.current_date > datetime(2026, 4, 30):
     st.balloons()
-    st.success(t("game_end").format(revenue=st.session_state.total_revenue))
+st.success(t("game_end").format(revenue=st.session_state.total_revenue))
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Occupazione media aprile", f"{occupancy_percentage:.1f}%")
+# ===== Aggiorna automaticamente il best score se l'utente è loggato =====
+if st.session_state.user_id:
+    user_stats = get_user_stats(st.session_state.user_id)
+    if user_stats:
+        username, email, best_score, games_played, created_at, last_game = user_stats
+        if st.session_state.total_revenue > best_score:
+            update_user_stats(st.session_state.user_id, st.session_state.total_revenue)
+            st.success(f"🎉 Nuovo record! Best score aggiornato a €{st.session_state.total_revenue:,.0f}")
 
-    avg_price = st.session_state.total_revenue / total_occ if total_occ > 0 else 0
-    col2.metric("Prezzo medio", f"€{avg_price:.0f}")
+# ===== Mostra le metriche finali =====
+col1, col2, col3 = st.columns(3)
+col1.metric("Occupazione media aprile", f"{occupancy_percentage:.1f}%")
 
-    if st.session_state.daily_occupancy:
-        april_occupancy = {
-            date: occ
-            for date, occ in st.session_state.daily_occupancy.items()
-            if datetime.strptime(date, "%Y-%m-%d").month == 4
-        }
-        if april_occupancy:
-            best_day_str = max(april_occupancy.items(), key=lambda x: x[1])[0]
-            best_day = datetime.strptime(best_day_str, "%Y-%m-%d").strftime("%d %b")
-            col3.metric("Giorno più pieno di aprile", best_day)
+avg_price = st.session_state.total_revenue / total_occ if total_occ > 0 else 0
+col2.metric("Prezzo medio", f"€{avg_price:.0f}")
+
+if st.session_state.daily_occupancy:
+    april_occupancy = {
+        date: occ
+        for date, occ in st.session_state.daily_occupancy.items()
+        if datetime.strptime(date, "%Y-%m-%d").month == 4
+    }
+    if april_occupancy:
+        best_day_str = max(april_occupancy.items(), key=lambda x: x[1])[0]
+        best_day = datetime.strptime(best_day_str, "%Y-%m-%d").strftime("%d %b")
+        col3.metric("Giorno più pieno di aprile", best_day)
 
 # ===== LEADERBOARD =====
 st.divider()
