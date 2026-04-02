@@ -1,4 +1,4 @@
-perché non salva nel database quando faccio login il mioo score migliore : import math
+import math
 import numpy as np
 import streamlit as st
 import pandas as pd
