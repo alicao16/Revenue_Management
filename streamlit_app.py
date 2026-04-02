@@ -19,8 +19,8 @@ from supabase import create_client, Client
 
 @st.cache_resource
 def get_supabase_client() -> Client:
-    url = os.getenvs("SUPABASE_URL")
-    key = os.getenvs("SUPABASE_KEY")
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
     return create_client(url, key)
 
 def supabase() -> Client:
