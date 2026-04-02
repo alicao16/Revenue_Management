@@ -455,7 +455,7 @@ def show_login_ui():
                     st.metric(t("games_played"), st.session_state.get("games_played", 0))
 
                 st.caption(f"📧 {st.session_state.get('user_email', '')}")
-                    created_dt = _parse_dt(st.session_state.get("created_at"))
+                created_dt = _parse_dt(st.session_state.get("created_at"))
                 if created_dt:
                     st.caption(f"{t('member_since')}: {created_dt.strftime('%d/%m/%Y')}")
                 last_game_dt = _parse_dt(st.session_state.get("last_game"))
