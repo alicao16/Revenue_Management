@@ -96,7 +96,7 @@ TRANSLATIONS = {
         "welcome": "Benvenuto",
         "login_error": "Email/username o password errati",
         "register_error": "Email già registrata",
-        "register_success": "Registrazione completata! Ora puoi accedere"),
+        "register_success": "Registrazione completata! Ora puoi accedere",
         "profile": "👤 Il mio Profilo",
         "best_score": "🏆 Miglior Punteggio",
         "games_played": "🎮 Partite Giocate",
