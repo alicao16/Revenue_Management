@@ -590,7 +590,7 @@ def generate_bookings(booking_date):
 
         n0 = st.session_state.get("market_demand", 5)
         p0 = st.session_state.get("p0", 100)
-        alpha = st.session_state.get("alpha", 0.1)
+        alpha = st.session_state.get("alpha", 0.12)
         C = st.session_state.total_rooms
 
         n0 = n0 * season_factor
@@ -683,8 +683,8 @@ with st.sidebar:
     alpha = st.slider(
         "Alpha (demand sensitivity to price)",
         min_value=0.01,
-        max_value=0.10,
-        value=st.session_state.get("alpha", 0.07),
+        max_value=0.20,
+        value=st.session_state.get("alpha", 0.12),
         step=0.005,
         help="Higher alpha → demand drops faster when price increases"
     )
@@ -696,7 +696,7 @@ with st.sidebar:
         "April demand",
         min_value=0.30,
         max_value=1.50,
-        value=st.session_state.get("season_april", 0.70),
+        value=st.session_state.get("season_april", 1.0),
         step=0.05
     )
     st.session_state.season_april = season_april
