@@ -19,10 +19,17 @@ from supabase import create_client, Client
 
 @st.cache_resource
 def get_supabase_client() -> Client:
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+    import os
 
+    url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
+    key = st.secrets.get("SUPABASE_KEY") or os.getenv("SUPABASE_KEY")
+
+    if not url or not key:
+        st.error("❌ Supabase credentials missing. Configure secrets or environment variables.")
+        st.stop()
+
+    return create_client(url, key)
+    
 def supabase() -> Client:
     return get_supabase_client()
 
