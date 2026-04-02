@@ -9,7 +9,8 @@ import time
 import hashlib
 import json
 import os
-import 
+from supabase import create_client
+from dotenv import load_dotenv
 from pathlib import Path
 import sys
 
@@ -20,21 +21,19 @@ st.set_page_config(layout="wide")
 # Su Streamlit Cloud, l'unica directory scrivibile è /tmp
 DB_PATH = Path("/tmp/hotel_game.db")
 
-# Verifica che possiamo scrivere in /tmp
-print(f"📁 Usando database in: {DB_PATH}", file=sys.stderr)
-print(f"📁 La directory /tmp è scrivibile: {os.access('/tmp', os.W_OK)}", file=sys.stderr)
+# SUPABASE database
+load_dotenv()
+SUPABASE_URL = os.getenv("https://drvaaneglmpjelqfmget.supabase.co")
+SUPABASE_KEY = os.getenv("sb_publishable_VReG-vrtPzK8JxBDI5L8nQ_SbAU5PCM")
 
-# Funzione per ottenere connessione al database
 def get_db_connection():
-    """Restituisce una connessione al database SQLite"""
+    """Restituisce il client Supabase"""
     try:
-        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        return conn
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        return supabase
     except Exception as e:
-        print(f"❌ Errore connessione database: {e}", file=sys.stderr)
-        # Fallback: database in memoria
-        return sqlite3.connect(":memory:")
-
+        print(f"❌ Errore connessione Supabase: {e}", file=sys.stderr)
+        return None
 # ===== TRADUZIONI =====
 TRANSLATIONS = {
     "it": {
@@ -230,156 +229,103 @@ def t(key):
     return TRANSLATIONS.get(lang, TRANSLATIONS["it"]).get(key, key)
 
 # ===== DATABASE SETUP =====
-def init_database():
-    """Inizializza il database SQLite per salvare i profili"""
-    try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        # Tabella utenti
-        c.execute('''CREATE TABLE IF NOT EXISTS users
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      email TEXT UNIQUE,
-                      username TEXT UNIQUE,
-                      password TEXT,
-                      best_score INTEGER DEFAULT 0,
-                      games_played INTEGER DEFAULT 0,
-                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                      last_login TIMESTAMP,
-                      last_game TIMESTAMP)''')
-        
-        # Tabella punteggi per classifica
-        c.execute('''CREATE TABLE IF NOT EXISTS scores
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      user_id INTEGER,
-                      score INTEGER,
-                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                      FOREIGN KEY (user_id) REFERENCES users (id))''')
-        
-        conn.commit()
-        conn.close()
-        print("✅ Database inizializzato correttamente", file=sys.stderr)
-    except Exception as e:
-        print(f"❌ Errore inizializzazione database: {e}", file=sys.stderr)
-
+# ===== HELPERS =====
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def get_user_by_email(email):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE email = ?", (email,))
-    user = c.fetchone()
-    conn.close()
-    return user
+    supabase = get_db_connection()
+    response = supabase.table("users").select("*").eq("email", email).execute()
+    if response.data:
+        return response.data[0]
+    return None
 
 def get_user_by_identifier(identifier):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute(
-        "SELECT * FROM users WHERE email = ? OR username = ?",
-        (identifier, identifier),
-    )
-    user = c.fetchone()
-    conn.close()
-    return user
+    supabase = get_db_connection()
+    response = supabase.table("users").select("*").or_(f"email.eq.{identifier},username.eq.{identifier}").execute()
+    if response.data:
+        return response.data[0]
+    return None
 
 def get_user_by_id(user_id):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-    user = c.fetchone()
-    conn.close()
-    return user
+    supabase = get_db_connection()
+    response = supabase.table("users").select("*").eq("id", user_id).execute()
+    if response.data:
+        return response.data[0]
+    return None
 
 def create_user(email, username, password):
-    conn = get_db_connection()
-    c = conn.cursor()
-    try:
-        hashed = hash_password(password)
-        c.execute("INSERT INTO users (email, username, password, created_at, last_login) VALUES (?, ?, ?, ?, ?)",
-                 (email, username, hashed, datetime.now(), datetime.now()))
-        conn.commit()
-        user_id = c.lastrowid
-        conn.close()
-        return user_id
-    except sqlite3.IntegrityError:
-        conn.close()
+    supabase = get_db_connection()
+    if not supabase:
+        return None
+    hashed = hash_password(password)
+    response = supabase.table("users").insert({
+        "email": email,
+        "username": username,
+        "password": hashed,
+        "created_at": datetime.now().isoformat(),
+        "last_login": datetime.now().isoformat(),
+        "best_score": 0,
+        "games_played": 0
+    }).execute()
+    if response.status_code == 201:
+        return response.data[0]["id"]
+    else:
         return None
 
 def update_user_login(email):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("UPDATE users SET last_login = ? WHERE email = ?", (datetime.now(), email))
-    conn.commit()
-    conn.close()
+    supabase = get_db_connection()
+    supabase.table("users").update({"last_login": datetime.now().isoformat()}).eq("email", email).execute()
 
 def update_user_stats(user_id, score):
-    conn = get_db_connection()
-    c = conn.cursor()
+    supabase = get_db_connection()
     
-    # Aggiorna best score se necessario
-    c.execute("SELECT best_score FROM users WHERE id = ?", (user_id,))
-    current_best = c.fetchone()[0]
+    # Get current best score
+    user_resp = supabase.table("users").select("*").eq("id", user_id).execute()
+    if not user_resp.data:
+        return
+    user = user_resp.data[0]
+    current_best = user["best_score"]
     
+    # Update user
+    update_data = {
+        "games_played": user["games_played"] + 1,
+        "last_game": datetime.now().isoformat()
+    }
     if score > current_best:
-        c.execute("UPDATE users SET best_score = ?, games_played = games_played + 1, last_game = ? WHERE id = ?",
-                 (score, datetime.now(), user_id))
-    else:
-        c.execute("UPDATE users SET games_played = games_played + 1, last_game = ? WHERE id = ?",
-                 (datetime.now(), user_id))
+        update_data["best_score"] = score
+    supabase.table("users").update(update_data).eq("id", user_id).execute()
     
-    # Salva il punteggio nella tabella scores
-    c.execute("INSERT INTO scores (user_id, score) VALUES (?, ?)", (user_id, score))
-    
-    conn.commit()
-    conn.close()
+    # Insert into scores table
+    supabase.table("scores").insert({
+        "user_id": user_id,
+        "score": score,
+        "created_at": datetime.now().isoformat()
+    }).execute()
 
 def get_user_scores(user_id, limit=10):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("""
-        SELECT score, created_at 
-        FROM scores 
-        WHERE user_id = ? 
-        ORDER BY created_at DESC
-        LIMIT ?
-    """, (user_id, limit))
-    scores = c.fetchall()
-    conn.close()
-    return scores
+    supabase = get_db_connection()
+    response = supabase.table("scores").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+    return [(item["score"], item["created_at"]) for item in response.data]
 
 def get_leaderboard(limit=10):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("""
-        SELECT u.username, MAX(s.score) AS best_score
-        FROM scores s
-        JOIN users u ON s.user_id = u.id
-        GROUP BY u.id
-        ORDER BY best_score DESC
-        LIMIT ?
-    """, (limit,))
-    scores = c.fetchall()
-    conn.close()
-    return scores
+    supabase = get_db_connection()
+    response = supabase.table("users").select("username, best_score").order("best_score", desc=True).limit(limit).execute()
+    return [(item["username"], item["best_score"]) for item in response.data]
 
 def get_user_stats(user_id):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT username, email, best_score, games_played, created_at, last_game FROM users WHERE id = ?", (user_id,))
-    stats = c.fetchone()
-    conn.close()
-    return stats
-
-# Inizializza il database all'avvio
-init_database()
+    supabase = get_db_connection()
+    response = supabase.table("users").select("*").eq("id", user_id).execute()
+    if response.data:
+        u = response.data[0]
+        return (u["username"], u["email"], u["best_score"], u["games_played"], u["created_at"], u.get("last_game"))
+    return None
 
 # ===== LOGIN UI =====
 def show_login_ui():
     with st.sidebar:
         st.divider()
-        st.subheader(t("login"))
+        st.subheader("Login / Register")
         
         if 'user_id' not in st.session_state:
             st.session_state.user_id = None
@@ -389,92 +335,91 @@ def show_login_ui():
         
         if st.session_state.user_id is None:
             col_login, col_register = st.columns(2)
-            login_clicked = col_login.button(t("login_tab"), use_container_width=True)
-            register_clicked = col_register.button(t("register_tab"), use_container_width=True)
+            login_clicked = col_login.button("Login", use_container_width=True)
+            register_clicked = col_register.button("Register", use_container_width=True)
             if login_clicked:
                 st.session_state.auth_tab = "login"
             if register_clicked:
                 st.session_state.auth_tab = "register"
 
             if st.session_state.auth_tab == "login":
-                identifier = st.text_input(t("login_identifier"), key="login_identifier", placeholder=t("email_placeholder"))
-                password = st.text_input(t("password"), type="password", key="login_password", placeholder=t("password_placeholder"))
+                identifier = st.text_input("Email or Username", key="login_identifier")
+                password = st.text_input("Password", type="password", key="login_password")
 
-                if st.button(t("login_button"), use_container_width=True):
+                if st.button("Login", use_container_width=True):
                     if identifier and password:
                         user = get_user_by_identifier(identifier)
-                        if user and user[3] == hash_password(password):
-                            st.session_state.user_id = user[0]
-                            st.session_state.user_email = user[1]
-                            st.session_state.user_username = user[2]
-                            update_user_login(user[1])
-                            st.success(f"{t('welcome')}, {user[2]}!")
+                        if user and user["password"] == hash_password(password):
+                            st.session_state.user_id = user["id"]
+                            st.session_state.user_email = user["email"]
+                            st.session_state.user_username = user["username"]
+                            update_user_login(user["email"])
+                            st.success(f"Welcome, {user['username']}!")
                             time.sleep(1)
                             st.rerun()
                         else:
-                            st.error(t("login_error"))
+                            st.error("Email/Username or password incorrect")
                     else:
-                        st.error("Inserisci email e password")
+                        st.error("Enter email and password")
             else:
-                reg_email = st.text_input(t("email"), key="reg_email", placeholder=t("email_placeholder"))
-                reg_username = st.text_input(t("username"), key="reg_username", placeholder=t("username_placeholder"))
-                reg_password = st.text_input(t("password"), type="password", key="reg_password", placeholder=t("password_placeholder"))
-                reg_password_confirm = st.text_input("Conferma password", type="password", key="reg_password_confirm")
+                reg_email = st.text_input("Email", key="reg_email")
+                reg_username = st.text_input("Username", key="reg_username")
+                reg_password = st.text_input("Password", type="password", key="reg_password")
+                reg_password_confirm = st.text_input("Confirm password", type="password", key="reg_password_confirm")
                 
-                if st.button(t("register_button"), use_container_width=True):
+                if st.button("Register", use_container_width=True):
                     if not reg_email or not reg_username or not reg_password:
-                        st.error("Tutti i campi sono obbligatori")
+                        st.error("All fields are required")
                     elif '@' not in reg_email:
-                        st.error("Inserisci un'email valida")
+                        st.error("Enter a valid email")
                     elif len(reg_password) < 6:
-                        st.error("La password deve essere almeno 6 caratteri")
+                        st.error("Password must be at least 6 characters")
                     elif reg_password != reg_password_confirm:
-                        st.error("Le password non coincidono")
+                        st.error("Passwords do not match")
                     else:
                         existing = get_user_by_email(reg_email)
                         if existing:
-                            st.error(t("register_error"))
+                            st.error("Email already registered")
                         else:
                             user_id = create_user(reg_email, reg_username, reg_password)
                             if user_id:
-                                st.success(t("register_success"))
+                                st.success("Registration successful")
                                 time.sleep(2)
                                 st.rerun()
                             else:
-                                st.error("Errore durante la registrazione. Username potrebbe già esistere.")
+                                st.error("Error registering user. Username may already exist.")
         else:
-            st.success(f"✅ {t('welcome')}, {st.session_state.user_username}!")
-            
+            st.success(f"✅ Welcome, {st.session_state.user_username}!")
             stats = get_user_stats(st.session_state.user_id)
             if stats:
                 username, email, best_score, games_played, created_at, last_game = stats
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.metric(t("best_score"), f"€{best_score:,.0f}")
+                    st.metric("Best Score", f"€{best_score:,.0f}")
                 with col2:
-                    st.metric(t("games_played"), games_played)
+                    st.metric("Games Played", games_played)
                 
                 st.caption(f"📧 {email}")
-                st.caption(f"{t('member_since')}: {datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S.%f').strftime('%d/%m/%Y')}")
+                st.caption(f"Member since: {datetime.fromisoformat(created_at).strftime('%d/%m/%Y')}")
                 if last_game:
-                    st.caption(f"{t('last_game')}: {datetime.strptime(last_game, '%Y-%m-%d %H:%M:%S.%f').strftime('%d/%m/%Y %H:%M')}")
+                    st.caption(f"Last game: {datetime.fromisoformat(last_game).strftime('%d/%m/%Y %H:%M')}")
                 
                 st.divider()
-                st.subheader(t("my_scores"))
+                st.subheader("My Scores")
                 scores = get_user_scores(st.session_state.user_id, 5)
                 if scores:
                     scores_data = []
                     for score, date in scores:
                         scores_data.append({
-                            t('date'): datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f').strftime('%d/%m/%Y %H:%M'),
-                            t('score_value'): f"€{score:,.0f}"
+                            "Date": datetime.fromisoformat(date).strftime('%d/%m/%Y %H:%M'),
+                            "Score": f"€{score:,.0f}"
                         })
                     st.dataframe(pd.DataFrame(scores_data), use_container_width=True, hide_index=True)
                 else:
-                    st.info(t("no_scores_yet"))
+                    st.info("No scores yet")
             
-            if st.button(t("logout"), use_container_width=True):
+            if st.button("Logout", use_container_width=True):
                 st.session_state.user_id = None
                 st.session_state.user_email = None
                 st.session_state.user_username = None
@@ -485,47 +430,27 @@ def show_leaderboard():
     scores = get_leaderboard(10)
     if scores:
         if st.session_state.get("user_id"):
-            st.subheader(t("leaderboard"))
+            st.subheader("Leaderboard")
         else:
-            if st.button(t("leaderboard")):
-                st.warning(t("login_prompt_leaderboard"))
+            if st.button("Leaderboard"):
+                st.warning("Login required to view leaderboard")
                 st.session_state.auth_tab = "register"
                 st.rerun()
         leaderboard_data = []
         for i, (username, best_score) in enumerate(scores, 1):
             leaderboard_data.append({
-                t('rank'): i,
-                t('player'): username,
-                t('score'): f"€{best_score:,.0f}",
+                "Rank": i,
+                "Player": username,
+                "Score": f"€{best_score:,.0f}"
             })
         st.dataframe(pd.DataFrame(leaderboard_data), use_container_width=True, hide_index=True)
 
-
-st.markdown(
-    """
-    <style>
-    [data-testid="stButton"][data-key="next_day_button"] > button {
-        background-color: #ff6600 !important;
-        color: white !important;
-        font-size: 1.2em !important;
-        font-weight: bold !important;
-        border-radius: 8px !important;
-    }
-    .stButton>button {
-        padding: 0.6rem 1rem !important;
-    }
-    .css-1d391kg, .css-18e3th9 {padding: 1rem 2rem !important;}
-    .css-1d391kg h1, .css-1d391kg h2 {text-align: center;}
-    .css-1d391kg .css-1cpxqw2 {background-color: #f9f9f9;}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.title(t("title"))
-st.markdown(f"**{t('subtitle')}**")
-st.caption(t("april_only"))
-st.caption(t("instructions"))
+# ===== MAIN =====
+st.title("Game Dashboard")
+st.markdown("**Track your scores and compete on leaderboard!**")
+show_login_ui()
+st.divider()
+show_leaderboard()
 
 # ===== INIZIALIZZAZIONE =====
 if "init" not in st.session_state:
