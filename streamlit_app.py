@@ -14,8 +14,6 @@ import sys
 
 # ===== SUPABASE SETUP =====
 
-SUPABASE_URL = "https://drvaaneglmpjelqfmget.supabase.co"
-SUPABASE_KEY = "sb_publishable_VReG-vrtPzK8JxBDI5L8nQ_SbAU5PCM"
 
 from supabase import create_client, Client
 
