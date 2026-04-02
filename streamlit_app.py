@@ -327,26 +327,28 @@ def show_login_ui():
         st.divider()
         st.subheader("Login / Register")
         
+        # Initialize session state keys if not present
         if 'user_id' not in st.session_state:
             st.session_state.user_id = None
             st.session_state.user_email = None
             st.session_state.user_username = None
-            st.session_state.auth_tab = st.session_state.get("auth_tab", "login")
+            st.session_state.auth_tab = "login"
         
         if st.session_state.user_id is None:
+            # Tab selection buttons (unique keys)
             col_login, col_register = st.columns(2)
-            login_clicked = col_login.button("Login", use_container_width=True)
-            register_clicked = col_register.button("Register", use_container_width=True)
-            if login_clicked:
+            if col_login.button("Login", key="tab_login", use_container_width=True):
                 st.session_state.auth_tab = "login"
-            if register_clicked:
+            if col_register.button("Register", key="tab_register", use_container_width=True):
                 st.session_state.auth_tab = "register"
 
+            # Show the selected form
             if st.session_state.auth_tab == "login":
                 identifier = st.text_input("Email or Username", key="login_identifier")
                 password = st.text_input("Password", type="password", key="login_password")
 
-                if st.button("Login", use_container_width=True):
+                # Submit button with unique key
+                if st.button("Login", key="submit_login", use_container_width=True):
                     if identifier and password:
                         user = get_user_by_identifier(identifier)
                         if user and user["password"] == hash_password(password):
@@ -361,13 +363,14 @@ def show_login_ui():
                             st.error("Email/Username or password incorrect")
                     else:
                         st.error("Enter email and password")
-            else:
+            else:  # register tab
                 reg_email = st.text_input("Email", key="reg_email")
                 reg_username = st.text_input("Username", key="reg_username")
                 reg_password = st.text_input("Password", type="password", key="reg_password")
                 reg_password_confirm = st.text_input("Confirm password", type="password", key="reg_password_confirm")
                 
-                if st.button("Register", use_container_width=True):
+                # Submit button with unique key
+                if st.button("Register", key="submit_register", use_container_width=True):
                     if not reg_email or not reg_username or not reg_password:
                         st.error("All fields are required")
                     elif '@' not in reg_email:
@@ -389,6 +392,7 @@ def show_login_ui():
                             else:
                                 st.error("Error registering user. Username may already exist.")
         else:
+            # Logged‑in user info (unchanged)
             st.success(f"✅ Welcome, {st.session_state.user_username}!")
             stats = get_user_stats(st.session_state.user_id)
             if stats:
@@ -419,7 +423,7 @@ def show_login_ui():
                 else:
                     st.info("No scores yet")
             
-            if st.button("Logout", use_container_width=True):
+            if st.button("Logout", key="logout_button", use_container_width=True):
                 st.session_state.user_id = None
                 st.session_state.user_email = None
                 st.session_state.user_username = None
