@@ -96,7 +96,7 @@ TRANSLATIONS = {
         "welcome": "Benvenuto",
         "login_error": "Email/username o password errati",
         "register_error": "Email già registrata",
-        "register_success": "Registrazione completata! Ora puoi accedere",
+        "register_success": "Registrazione completata! Ora puoi accedere")
         "profile": "👤 Il mio Profilo",
         "best_score": "🏆 Miglior Punteggio",
         "games_played": "🎮 Partite Giocate",
@@ -696,7 +696,7 @@ with st.sidebar:
         "April demand",
         min_value=0.30,
         max_value=1.50,
-        value=st.session_state.get("season_april", 1.0),
+        value=st.session_state.get("season_april", 0.6),
         step=0.05
     )
     st.session_state.season_april = season_april
