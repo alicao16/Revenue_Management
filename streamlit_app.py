@@ -448,16 +448,17 @@ def show_login_ui():
                 username, email, best_score, games_played, created_at, last_game = stats
 
                 col1, col2 = st.columns(2)
+                col1, col2 = st.columns(2)
                 with col1:
-                    st.metric(t("best_score"), f"€{best_score:,.0f}" if best_score else "€0")
+                    st.metric(t("best_score"), f"€{st.session_state.get('best_score', 0):,.0f}")
                 with col2:
-                    st.metric(t("games_played"), games_played or 0)
+                    st.metric(t("games_played"), st.session_state.get("games_played", 0))
 
-                st.caption(f"📧 {email}")
-                created_dt = _parse_dt(created_at)
+                st.caption(f"📧 {st.session_state.get('user_email', '')}")
+                    created_dt = _parse_dt(st.session_state.get("created_at"))
                 if created_dt:
                     st.caption(f"{t('member_since')}: {created_dt.strftime('%d/%m/%Y')}")
-                last_game_dt = _parse_dt(last_game)
+                last_game_dt = _parse_dt(st.session_state.get("last_game"))
                 if last_game_dt:
                     st.caption(f"{t('last_game')}: {last_game_dt.strftime('%d/%m/%Y %H:%M')}")
 
