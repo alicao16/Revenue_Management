@@ -1035,7 +1035,7 @@ if total_occ > 0:
 
 if st.session_state.current_date > datetime(2026, 4, 30):
     st.balloons()
-st.success(t("game_end").format(revenue=st.session_state.total_revenue))
+    st.success(t("game_end").format(revenue=st.session_state.total_revenue))
 
 # ===== Aggiorna automaticamente il best score se l'utente è loggato =====
 if st.session_state.user_id:
