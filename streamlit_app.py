@@ -131,6 +131,8 @@ TRANSLATIONS = {
         "analisi_prenotazioni": "📊 Analisi Prenotazioni",
         "pickup_tab": "📈 Pickup Chart (cumulativo per giorno di soggiorno)",
         "details_tab": "📋 Dettaglio per data prenotazione",
+        "booking_details_by_date": "Dettaglio prenotazioni per data di prenotazione",
+        "select_booking_date": "Seleziona data di prenotazione",
     },
     "en": {
         "title": "🏨 Hotel Revenue Management Game",
@@ -229,6 +231,8 @@ TRANSLATIONS = {
         "analisi_prenotazioni": "📊 Booking Analysis",
         "pickup_tab": "📈 Pickup Chart (cumulative per stay day)",
         "details_tab": "📋 Details by booking date",
+        "booking_details_by_date": "Booking details by booking date",
+        "select_booking_date": "Select booking date",
     }
 }
 
@@ -847,7 +851,7 @@ with tab1:
 
     if stay_dates:
         selected_stay = st.selectbox(
-            "Seleziona giorno di soggiorno per vedere il pickup cumulativo",
+            t("select_booking_date"),
             sorted(stay_dates, key=lambda x: datetime.strptime(x, "%Y-%m-%d")),
             format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y"),
             key="stay_select"
@@ -927,7 +931,7 @@ with tab1:
                 st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
 
 with tab2:
-    st.subheader("Dettaglio prenotazioni per data di prenotazione")
+    st.subheader(t("booking_details_by_date"))
     st.caption(t("booking_explanation"))
 
     selected_month = st.session_state.calendar_month
