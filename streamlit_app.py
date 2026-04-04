@@ -458,7 +458,6 @@ def show_leaderboard():
 # ===== MAIN =====
 st.title("Game Dashboard")
 st.markdown("**Track your scores and compete on leaderboard!**")
-show_login_ui()
 st.divider()
 show_leaderboard()
 
