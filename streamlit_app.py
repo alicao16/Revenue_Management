@@ -231,6 +231,7 @@ TRANSLATIONS = {
         "avg_occupancy_april": "Average April occupancy",
         "avg_price": "Average price",
         "fullest_day_april": "Fullest day in April",
+    }
 }
 
 def t(key):
