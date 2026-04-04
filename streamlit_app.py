@@ -943,7 +943,7 @@ with tab2:
         )
 
         if selected_booking_date:
-            st.markdown(f"**Prenotazioni ricevute il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}**")
+            st.markdown(t("booking_received_on").format(date=formatted_date))
 
             future_stays = []
             total_rooms_booked = 0
@@ -975,19 +975,19 @@ with tab2:
                             stay_formatted = stay_date
 
                         future_stays.append({
-                            "Data soggiorno": stay_formatted,
-                            "Giorni dopo": days_before,
-                            "Camere": rooms,
-                            "Prezzo": f"€{price}",
-                            "Revenue": f"€{revenue:,.0f}"
+                            t("stay_date"): stay_formatted,
+                            t("days_after"): days_before,
+                            t("rooms_col"): rooms,
+                            t("price_col": f"€{price}",
+                            t("revenue_col"): f"€{revenue:,.0f}"
                         })
 
             if future_stays:
                 st.dataframe(pd.DataFrame(future_stays), use_container_width=True, hide_index=True)
                 col1, col2, col3 = st.columns(3)
-                col1.metric("📊 Totale camere prenotate in questo giorno", f"{total_rooms_booked}")
-                col2.metric("💰 Revenue generato in questo giorno", f"€{total_revenue_day:,.0f}")
-                col3.metric("🏨 Soggiorni futuri prenotati", len(future_stays))
+                col1.metric(t("total_rooms_this_day"), f"{total_rooms_booked}")
+                col2.metric("t("revenue_this_day"), f"€{total_revenue_day:,.0f}")
+                col3.metric(t("future_stays_booked"), len(future_stays))
             else:
                 st.info(f"Nessuna prenotazione trovata per il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}")
     else:
@@ -1029,9 +1029,9 @@ total_days = (end_date - start_date).days + 1
 days_passed = (st.session_state.current_date - start_date).days + 1
 progress = min(1, days_passed / total_days)
 
-st.progress(progress, text=f"{t('progress_label')}: {days_passed}/{total_days} giorni")
+st.progress(progress, text=f"{t('progress_label')}: {days_passed}/{total_days} {t('progress_days_word')}")
 if total_occ > 0:
-    st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili in aprile")
+    st.caption(t("rooms_booked_caption").format(occupied=total_occ, total=max_possible))
 
 if st.session_state.current_date > datetime(2026, 4, 30):
     st.balloons()
@@ -1053,10 +1053,10 @@ if st.session_state.user_id:
 
 # ===== Mostra le metriche finali =====
 col1, col2, col3 = st.columns(3)
-col1.metric("Occupazione media aprile", f"{occupancy_percentage:.1f}%")
+col1.metric(t("average_occupancy_april"), f"{occupancy_percentage:.1f}%")
 
 avg_price = st.session_state.total_revenue / total_occ if total_occ > 0 else 0
-col2.metric("Prezzo medio", f"€{avg_price:.0f}")
+col2.metric(t("average_price"), f"€{avg_price:.0f}")
 
 if st.session_state.daily_occupancy:
     april_occupancy = {
@@ -1067,7 +1067,9 @@ if st.session_state.daily_occupancy:
     if april_occupancy:
         best_day_str = max(april_occupancy.items(), key=lambda x: x[1])[0]
         best_day = datetime.strptime(best_day_str, "%Y-%m-%d").strftime("%d %b")
-        col3.metric("Giorno più pieno di aprile", best_day)
+        col3.metric(t("fullest_day_april"), best_day)
+
+
 
 # ===== LEADERBOARD =====
 st.divider()
