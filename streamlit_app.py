@@ -9,29 +9,31 @@ import time
 import hashlib
 import json
 import os
+from supabase import create_client
+from dotenv import load_dotenv
 from pathlib import Path
 import sys
-
-# ===== SUPABASE SETUP =====
-
-
-from supabase import create_client, Client
-
-@st.cache_resource
-def get_supabase_client() -> Client:
-    import os
-
-    url = os.getenv("SUPABASE_URL", "https://drvaaneglmpjelqfmget.supabase.co")
-    key = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRydmFhbmVnbG1wamVscWZtZ2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDIxOTAsImV4cCI6MjA5MDcxODE5MH0.FysY6cJ3KOYCwsYhP2GZtIgziaSVAe7ZqtBg7bEoAmQ")
-
-    return create_client(url, key)
-    
-def supabase() -> Client:
-    return get_supabase_client()
 
 # ===== CONFIGURAZIONE =====
 st.set_page_config(layout="wide")
 
+# ===== FIX PER STREAMLIT CLOUD =====
+# Su Streamlit Cloud, l'unica directory scrivibile è /tmp
+DB_PATH = Path("/tmp/hotel_game.db")
+
+# SUPABASE database
+load_dotenv()
+SUPABASE_URL = os.getenv("https://drvaaneglmpjelqfmget.supabase.co")
+SUPABASE_KEY = os.getenv("sb_publishable_VReG-vrtPzK8JxBDI5L8nQ_SbAU5PCM")
+
+def get_db_connection():
+    """Restituisce il client Supabase"""
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        return supabase
+    except Exception as e:
+        print(f"❌ Errore connessione Supabase: {e}", file=sys.stderr)
+        return None
 # ===== TRADUZIONI =====
 TRANSLATIONS = {
     "it": {
@@ -118,6 +120,7 @@ TRANSLATIONS = {
         "my_scores": "📊 I miei punteggi",
         "no_scores_yet": "Nessun punteggio salvato. Gioca e salva il tuo primo punteggio!",
         "score_history": "Cronologia punteggi",
+        "date": "Data",
         "score_value": "Punteggio",
         "next_day": "⏭️ Avanti (Prossimo Giorno)",
         "pickup": "📈 Pick‑up prenotazioni",
@@ -125,6 +128,11 @@ TRANSLATIONS = {
         "booking_explanation": "Mostra tutte le prenotazioni fatte in una specifica data per soggiorni futuri (aprile)",
         "no_bookings_month": "Nessuna prenotazione registrata ad aprile 2026",
         "progress_label": "Avanzamento",
+        "progress_days_word": "giorni",
+        "rooms_booked_caption": "📊 {occupied} camere prenotate su {total} disponibili in aprile",
+        "avg_occupancy_april": "Occupazione media aprile",
+        "avg_price": "Prezzo medio",
+        "fullest_day_april": "Giorno più pieno di aprile",
     },
     "en": {
         "title": "🏨 Hotel Revenue Management Game",
@@ -143,7 +151,7 @@ TRANSLATIONS = {
         "time_remaining": "⏳ Time Left",
         "click_start": "👉 Click **Start** to begin!",
         "click_next_day": "👉 Use the 'Next Day' button to advance",
-        "set_prices": "💰 Set Prices (April)",
+        "set_prices": "💰 Set Prices ( April)",
         "price_table_date": "Date",
         "price_table_day": "Day",
         "price_table_price": "Price (€)",
@@ -175,7 +183,7 @@ TRANSLATIONS = {
         "booking_from": "Bookings from",
         "total_for_day": "Daily total",
         "rooms": "rooms",
-        "april_only": "📅 April is game time! Set daily prices, monitor occupancy and conquer the leaderboard. Bookings begin in March but stays take place in April to simulate a hotel already in operation.",
+        "april_only": "📅 April is game time! Set daily prices, monitor occupancy and conquer the leaderboard. Bookings begin in March but stays take place in April and May to simulate a hotel already in operation.",
         "instructions": "Set daily prices and aim to maximize revenue – good luck, future economists!",
         "login": "🔐 Access Your Profile",
         "email": "📧 Email",
@@ -210,6 +218,7 @@ TRANSLATIONS = {
         "my_scores": "📊 My Scores",
         "no_scores_yet": "No scores saved yet. Play and save your first score!",
         "score_history": "Score history",
+        "date": "Date",
         "score_value": "Score",
         "next_day": "⏭️ Next Day",
         "pickup": "📈 Booking pick-up",
@@ -217,188 +226,136 @@ TRANSLATIONS = {
         "booking_explanation": "Shows all bookings made on a specific date for future stays (April)",
         "no_bookings_month": "No bookings recorded in April 2026",
         "progress_label": "Progress",
-    }
+        "progress_days_word": "days",        # for English
+        "rooms_booked_caption": "📊 {occupied} rooms booked out of {total} available in April",
+        "avg_occupancy_april": "Average April occupancy",
+        "avg_price": "Average price",
+        "fullest_day_april": "Fullest day in April",
 }
 
 def t(key):
     lang = st.session_state.get("language", "it")
     return TRANSLATIONS.get(lang, TRANSLATIONS["it"]).get(key, key)
 
-# ===== DATABASE FUNCTIONS (Supabase) =====
-
-def hash_password(password: str) -> str:
+# ===== DATABASE SETUP =====
+# ===== HELPERS =====
+def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def _parse_dt(value) -> datetime | None:
-    """Parse ISO timestamp string returned by Supabase into a datetime."""
-    if not value:
-        return None
-    try:
-        # Supabase returns ISO 8601, e.g. "2026-03-01T12:34:56.789+00:00"
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).replace(tzinfo=None)
-    except Exception:
-        return None
+def get_user_by_email(email):
+    supabase = get_db_connection()
+    response = supabase.table("users").select("*").eq("email", email).execute()
+    if response.data:
+        return response.data[0]
+    return None
 
-def get_user_by_email(email: str):
-    try:
-        res = supabase().table("users").select("*").eq("email", email).maybe_single().execute()
-        return res.data
-    except Exception as e:
-        st.error(f"DB error: {e}")
-        return None
+def get_user_by_identifier(identifier):
+    supabase = get_db_connection()
+    response = supabase.table("users").select("*").or_(f"email.eq.{identifier},username.eq.{identifier}").execute()
+    if response.data:
+        return response.data[0]
+    return None
 
-def get_user_by_identifier(identifier: str):
-    """Lookup by email OR username."""
-    try:
-        res = (
-            supabase()
-            .table("users")
-            .select("*")
-            .or_(f"email.eq.{identifier},username.eq.{identifier}")
-            .maybe_single()
-            .execute()
-        )
-        return res.data
-    except Exception as e:
-        st.error(f"DB error: {e}")
-        return None
+def get_user_by_id(user_id):
+    supabase = get_db_connection()
+    response = supabase.table("users").select("*").eq("id", user_id).execute()
+    if response.data:
+        return response.data[0]
+    return None
 
-def get_user_by_id(user_id: int):
-    try:
-        res = supabase().table("users").select("*").eq("id", user_id).maybe_single().execute()
-        return res.data
-    except Exception as e:
-        st.error(f"DB error: {e}")
+def create_user(email, username, password):
+    supabase = get_db_connection()
+    if not supabase:
+        return None
+    hashed = hash_password(password)
+    response = supabase.table("users").insert({
+        "email": email,
+        "username": username,
+        "password": hashed,
+        "created_at": datetime.now().isoformat(),
+        "last_login": datetime.now().isoformat(),
+        "best_score": 0,
+        "games_played": 0
+    }).execute()
+    if response.status_code == 201:
+        return response.data[0]["id"]
+    else:
         return None
 
-def create_user(email: str, username: str, password: str):
-    """Returns the new user id, or None on conflict."""
-    try:
-        res = (
-            supabase()
-            .table("users")
-            .insert({
-                "email": email,
-                "username": username,
-                "password": hash_password(password),
-                "created_at": datetime.utcnow().isoformat(),
-                "last_login": datetime.utcnow().isoformat(),
-            })
-            .execute()
-        )
-        return res.data[0]["id"] if res.data else None
-    except Exception:
-        # Unique constraint violation → email/username already taken
-        return None
+def update_user_login(email):
+    supabase = get_db_connection()
+    supabase.table("users").update({"last_login": datetime.now().isoformat()}).eq("email", email).execute()
 
-def update_user_login(email: str):
-    try:
-        supabase().table("users").update({"last_login": datetime.utcnow().isoformat()}).eq("email", email).execute()
-    except Exception as e:
-        st.error(f"DB error: {e}")
+def update_user_stats(user_id, score):
+    supabase = get_db_connection()
+    
+    # Get current best score
+    user_resp = supabase.table("users").select("*").eq("id", user_id).execute()
+    if not user_resp.data:
+        return
+    user = user_resp.data[0]
+    current_best = user["best_score"]
+    
+    # Update user
+    update_data = {
+        "games_played": user["games_played"] + 1,
+        "last_game": datetime.now().isoformat()
+    }
+    if score > current_best:
+        update_data["best_score"] = score
+    supabase.table("users").update(update_data).eq("id", user_id).execute()
+    
+    # Insert into scores table
+    supabase.table("scores").insert({
+        "user_id": user_id,
+        "score": score,
+        "created_at": datetime.now().isoformat()
+    }).execute()
 
-def update_user_stats(user_id: int, score: int):
-    try:
-        # Fetch current best
-        res = supabase().table("users").select("best_score").eq("id", user_id).maybe_single().execute()
-        current_best = res.data["best_score"] if res.data else 0
+def get_user_scores(user_id, limit=10):
+    supabase = get_db_connection()
+    response = supabase.table("scores").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+    return [(item["score"], item["created_at"]) for item in response.data]
 
-        update_payload = {
-            "games_played": None,   # incremented via RPC below
-            "last_game": datetime.utcnow().isoformat(),
-        }
-        if score > (current_best or 0):
-            update_payload["best_score"] = score
+def get_leaderboard(limit=10):
+    supabase = get_db_connection()
+    response = supabase.table("users").select("username, best_score").order("best_score", desc=True).limit(limit).execute()
+    return [(item["username"], item["best_score"]) for item in response.data]
 
-        # games_played++ — Supabase doesn't support field increments via the REST client
-        # directly, so we read and write.
-        games_res = supabase().table("users").select("games_played").eq("id", user_id).maybe_single().execute()
-        games_played = (games_res.data["games_played"] or 0) + 1
-        update_payload["games_played"] = games_played
-
-        supabase().table("users").update(update_payload).eq("id", user_id).execute()
-
-        # Insert score record
-        supabase().table("scores").insert({"user_id": user_id, "score": score}).execute()
-    except Exception as e:
-        st.error(f"DB error: {e}")
-
-def get_user_scores(user_id: int, limit: int = 10):
-    """Returns list of (score, created_at_str) tuples."""
-    try:
-        res = (
-            supabase()
-            .table("scores")
-            .select("score, created_at")
-            .eq("user_id", user_id)
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
-        )
-        return [(row["score"], row["created_at"]) for row in (res.data or [])]
-    except Exception as e:
-        st.error(f"DB error: {e}")
-        return []
-
-def get_leaderboard(limit: int = 10):
-    """Returns list of (username, best_score) tuples ordered by best_score desc."""
-    try:
-        res = (
-            supabase()
-            .table("users")
-            .select("username, best_score")
-            .order("best_score", desc=True)
-            .limit(limit)
-            .execute()
-        )
-        return [(row["username"], row["best_score"]) for row in (res.data or [])]
-    except Exception as e:
-        st.error(f"DB error: {e}")
-        return []
-
-def get_user_stats(user_id: int):
-    """Returns (username, email, best_score, games_played, created_at, last_game) or None."""
-    try:
-        res = (
-            supabase()
-            .table("users")
-            .select("username, email, best_score, games_played, created_at, last_game")
-            .eq("id", user_id)
-            .maybe_single()
-            .execute()
-        )
-        if not res.data:
-            return None
-        d = res.data
-        return (d["username"], d["email"], d["best_score"], d["games_played"], d["created_at"], d["last_game"])
-    except Exception as e:
-        st.error(f"DB error: {e}")
-        return None
+def get_user_stats(user_id):
+    supabase = get_db_connection()
+    response = supabase.table("users").select("*").eq("id", user_id).execute()
+    if response.data:
+        u = response.data[0]
+        return (u["username"], u["email"], u["best_score"], u["games_played"], u["created_at"], u.get("last_game"))
+    return None
 
 # ===== LOGIN UI =====
 def show_login_ui():
     with st.sidebar:
         st.divider()
-        st.subheader(t("login"))
-
-        if "user_id" not in st.session_state:
+        st.subheader("Login / Register")
+        
+        if 'user_id' not in st.session_state:
             st.session_state.user_id = None
             st.session_state.user_email = None
             st.session_state.user_username = None
-            st.session_state.auth_tab = "login"
-
+            st.session_state.auth_tab = st.session_state.get("auth_tab", "login")
+        
         if st.session_state.user_id is None:
             col_login, col_register = st.columns(2)
-            if col_login.button(t("login_tab"), use_container_width=True):
+            login_clicked = col_login.button("Login", use_container_width=True)
+            register_clicked = col_register.button("Register", use_container_width=True)
+            if login_clicked:
                 st.session_state.auth_tab = "login"
-            if col_register.button(t("register_tab"), use_container_width=True):
+            if register_clicked:
                 st.session_state.auth_tab = "register"
 
             if st.session_state.auth_tab == "login":
-                identifier = st.text_input(t("login_identifier"), key="login_identifier", placeholder=t("email_placeholder"))
-                password = st.text_input(t("password"), type="password", key="login_password", placeholder=t("password_placeholder"))
+                identifier = st.text_input("Email or Username", key="login_identifier")
+                password = st.text_input("Password", type="password", key="login_password")
 
-                if st.button(t("login_button"), use_container_width=True):
+                if st.button("Login", use_container_width=True):
                     if identifier and password:
                         user = get_user_by_identifier(identifier)
                         if user and user["password"] == hash_password(password):
@@ -406,82 +363,72 @@ def show_login_ui():
                             st.session_state.user_email = user["email"]
                             st.session_state.user_username = user["username"]
                             update_user_login(user["email"])
-                            st.success(f"{t('welcome')}, {user['username']}!")
+                            st.success(f"Welcome, {user['username']}!")
                             time.sleep(1)
                             st.rerun()
                         else:
-                            st.error(t("login_error"))
+                            st.error("Email/Username or password incorrect")
                     else:
-                        st.error("Inserisci email e password")
+                        st.error("Enter email and password")
             else:
-                reg_email = st.text_input(t("email"), key="reg_email", placeholder=t("email_placeholder"))
-                reg_username = st.text_input(t("username"), key="reg_username", placeholder=t("username_placeholder"))
-                reg_password = st.text_input(t("password"), type="password", key="reg_password", placeholder=t("password_placeholder"))
-                reg_password_confirm = st.text_input("Conferma password", type="password", key="reg_password_confirm")
-
-                if st.button(t("register_button"), use_container_width=True):
+                reg_email = st.text_input("Email", key="reg_email")
+                reg_username = st.text_input("Username", key="reg_username")
+                reg_password = st.text_input("Password", type="password", key="reg_password")
+                reg_password_confirm = st.text_input("Confirm password", type="password", key="reg_password_confirm")
+                
+                if st.button("Register", use_container_width=True):
                     if not reg_email or not reg_username or not reg_password:
-                        st.error("Tutti i campi sono obbligatori")
-                    elif "@" not in reg_email:
-                        st.error("Inserisci un'email valida")
+                        st.error("All fields are required")
+                    elif '@' not in reg_email:
+                        st.error("Enter a valid email")
                     elif len(reg_password) < 6:
-                        st.error("La password deve essere almeno 6 caratteri")
+                        st.error("Password must be at least 6 characters")
                     elif reg_password != reg_password_confirm:
-                        st.error("Le password non coincidono")
+                        st.error("Passwords do not match")
                     else:
                         existing = get_user_by_email(reg_email)
                         if existing:
-                            st.error(t("register_error"))
+                            st.error("Email already registered")
                         else:
                             user_id = create_user(reg_email, reg_username, reg_password)
                             if user_id:
-                                st.success(t("register_success"))
+                                st.success("Registration successful")
                                 time.sleep(2)
                                 st.rerun()
                             else:
-                                st.error("Errore durante la registrazione. Username potrebbe già esistere.")
+                                st.error("Error registering user. Username may already exist.")
         else:
-            st.success(f"✅ {t('welcome')}, {st.session_state.user_username}!")
-
+            st.success(f"✅ Welcome, {st.session_state.user_username}!")
             stats = get_user_stats(st.session_state.user_id)
             if stats:
                 username, email, best_score, games_played, created_at, last_game = stats
-                st.session_state.best_score = best_score or 0
-                st.session_state.games_played = games_played or 0
-                st.session_state.user_email = email
-                st.session_state.created_at = created_at
-                st.session_state.last_game = last_game
-
+                
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.metric(t("best_score"), f"€{st.session_state.get('best_score', 0):,.0f}")
+                    st.metric("Best Score", f"€{best_score:,.0f}")
                 with col2:
-                    st.metric(t("games_played"), st.session_state.get("games_played", 0))
-
-                st.caption(f"📧 {st.session_state.get('user_email', '')}")
-                created_dt = _parse_dt(st.session_state.get("created_at"))
-                if created_dt:
-                    st.caption(f"{t('member_since')}: {created_dt.strftime('%d/%m/%Y')}")
-                last_game_dt = _parse_dt(st.session_state.get("last_game"))
-                if last_game_dt:
-                    st.caption(f"{t('last_game')}: {last_game_dt.strftime('%d/%m/%Y %H:%M')}")
-
+                    st.metric("Games Played", games_played)
+                
+                st.caption(f"📧 {email}")
+                st.caption(f"Member since: {datetime.fromisoformat(created_at).strftime('%d/%m/%Y')}")
+                if last_game:
+                    st.caption(f"Last game: {datetime.fromisoformat(last_game).strftime('%d/%m/%Y %H:%M')}")
+                
                 st.divider()
-                st.subheader(t("my_scores"))
+                st.subheader("My Scores")
                 scores = get_user_scores(st.session_state.user_id, 5)
                 if scores:
                     scores_data = []
                     for score, date in scores:
-                        dt = _parse_dt(date)
                         scores_data.append({
-                            t("date"): dt.strftime("%d/%m/%Y %H:%M") if dt else date,
-                            t("score_value"): f"€{score:,.0f}",
+                            "Date": datetime.fromisoformat(date).strftime('%d/%m/%Y %H:%M'),
+                            "Score": f"€{score:,.0f}"
                         })
                     st.dataframe(pd.DataFrame(scores_data), use_container_width=True, hide_index=True)
                 else:
-                    st.info(t("no_scores_yet"))
-
-            if st.button(t("logout"), use_container_width=True):
+                    st.info("No scores yet")
+            
+            if st.button("Logout", use_container_width=True):
                 st.session_state.user_id = None
                 st.session_state.user_email = None
                 st.session_state.user_username = None
@@ -492,68 +439,51 @@ def show_leaderboard():
     scores = get_leaderboard(10)
     if scores:
         if st.session_state.get("user_id"):
-            st.subheader(t("leaderboard"))
+            st.subheader("Leaderboard")
         else:
-            if st.button(t("leaderboard")):
-                st.warning(t("login_prompt_leaderboard"))
+            if st.button("Leaderboard"):
+                st.warning("Login required to view leaderboard")
                 st.session_state.auth_tab = "register"
                 st.rerun()
         leaderboard_data = []
         for i, (username, best_score) in enumerate(scores, 1):
             leaderboard_data.append({
-                t("rank"): i,
-                t("player"): username,
-                t("score"): f"€{best_score:,.0f}",
+                "Rank": i,
+                "Player": username,
+                "Score": f"€{best_score:,.0f}"
             })
         st.dataframe(pd.DataFrame(leaderboard_data), use_container_width=True, hide_index=True)
 
-
-st.markdown(
-    """
-    <style>
-    [data-testid="stButton"][data-key="next_day_button"] > button {
-        background-color: #ff6600 !important;
-        color: white !important;
-        font-size: 1.2em !important;
-        font-weight: bold !important;
-        border-radius: 8px !important;
-    }
-    .stButton>button {
-        padding: 0.6rem 1rem !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.title(t("title"))
-st.markdown(f"**{t('subtitle')}**")
-st.caption(t("april_only"))
-st.caption(t("instructions"))
+# ===== MAIN =====
+st.title("Game Dashboard")
+st.markdown("**Track your scores and compete on leaderboard!**")
+show_login_ui()
+st.divider()
+show_leaderboard()
 
 # ===== INIZIALIZZAZIONE =====
 if "init" not in st.session_state:
     st.session_state.language = "it"
     st.session_state.game_running = False
     st.session_state.current_date = datetime(2026, 3, 1)
-    st.session_state.total_rooms = 50
+    st.session_state.total_rooms = 50  # Valore iniziale predefinito
     st.session_state.total_revenue = 0
     st.session_state.user_id = None
     st.session_state.user_email = None
     st.session_state.user_username = None
     st.session_state.auth_tab = "login"
-
+    
     st.session_state.prices = {}
     d = datetime(2026, 4, 1)
     while d <= datetime(2026, 4, 30):
         st.session_state.prices[d.strftime("%Y-%m-%d")] = 100
         d += timedelta(days=1)
-
+    
     st.session_state.bookings = defaultdict(lambda: defaultdict(int))
     st.session_state.daily_occupancy = defaultdict(int)
     st.session_state.daily_revenue = defaultdict(float)
-    st.session_state.daily_pickup = defaultdict(int)
-
+    st.session_state.daily_pickup = defaultdict(int)  # Added missing initialization
+    
     st.session_state.last_update = time.time()
     st.session_state.elapsed = 0
     st.session_state.paused_elapsed = 0
@@ -563,13 +493,14 @@ if "init" not in st.session_state:
 
 # ===== FUNZIONI =====
 def generate_bookings(booking_date):
+
     booking_str = booking_date.strftime("%Y-%m-%d")
     total_new_bookings = 0
 
     stay_date = datetime(2026, 4, 1)
-
+    
     while stay_date <= datetime(2026, 4, 30):
-
+    
         if stay_date < booking_date:
             stay_date += timedelta(days=1)
             continue
@@ -586,40 +517,60 @@ def generate_bookings(booking_date):
 
         p = st.session_state.prices.get(stay_str, 100)
 
+        # Season factor
         season_factor = st.session_state.season_april
+        
 
-        n0 = st.session_state.get("market_demand", 5)
-        p0 = st.session_state.get("p0", 100)
-        alpha = st.session_state.get("alpha", 0.12)
+        # Parameters
+        n0 = st.session_state.get("market_demand", 5)  # base demand
+        p0 = st.session_state.get("p0", 100)           # reference price
+        alpha = st.session_state.get("alpha", 0.1)    # demand sensitivity
         C = st.session_state.total_rooms
 
+        # Apply seasonality
         n0 = n0 * season_factor
 
+
+
+        # ===== PREZZO DI SELL-OUT (vincolo di capacità teorico) =====
         if n0 > C:
             p_so = p0 + (1 / alpha) * math.log(n0 / C - 1)
         else:
             p_so = float("inf")
 
+        # ===== SIGMOIDE DELLA DOMANDA =====
+        sigma = 1 / (1 + math.exp(alpha * (p - p0)))
+
+        # ===== REGIME CAPACITY CONSTRAINT & CAMPIONAMENTO =====
         sigma = 1 / (1 + math.exp(alpha * (p - p0)))
         bookings = np.random.binomial(n=n0, p=sigma)
+
+        # Applica vincolo capacità
         bookings = min(bookings, available)
 
+        # ===== ADVANCE BOOKING EFFECT =====
         days_before = max(1, (stay_date - booking_date).days)
         time_factor = max(0.4, min(1.0, 20 / days_before))
         bookings = int(bookings * time_factor)
 
+        # ===== VINCOLO DI CAPACITÀ =====
         new_bookings = min(bookings, available)
 
         if new_bookings > 0:
+
             st.session_state.bookings[stay_str][booking_str] = {
                 "rooms": new_bookings,
                 "price": p
             }
+
             st.session_state.daily_occupancy[stay_str] += new_bookings
+
             revenue = new_bookings * p
             st.session_state.daily_revenue[stay_str] += revenue
             st.session_state.total_revenue += revenue
+
             st.session_state.daily_pickup[booking_str] += new_bookings
+
             total_new_bookings += new_bookings
 
         stay_date += timedelta(days=1)
@@ -640,7 +591,7 @@ def reset_game():
     st.session_state.bookings = defaultdict(lambda: defaultdict(int))
     st.session_state.daily_occupancy = defaultdict(int)
     st.session_state.daily_revenue = defaultdict(float)
-    st.session_state.daily_pickup = defaultdict(int)
+    st.session_state.daily_pickup = defaultdict(int)  # Added missing initialization
     st.session_state.last_update = time.time()
     st.session_state.elapsed = 0
     st.session_state.paused_elapsed = 0
@@ -666,6 +617,7 @@ with st.sidebar:
     st.divider()
     st.header(t("controls"))
 
+    # Total rooms
     rooms_value = st.number_input(
         t("total_rooms"),
         min_value=1,
@@ -683,8 +635,8 @@ with st.sidebar:
     alpha = st.slider(
         "Alpha (demand sensitivity to price)",
         min_value=0.01,
-        max_value=0.20,
-        value=st.session_state.get("alpha", 0.12),
+        max_value=0.10,
+        value=st.session_state.get("alpha", 0.07),
         step=0.005,
         help="Higher alpha → demand drops faster when price increases"
     )
@@ -696,10 +648,12 @@ with st.sidebar:
         "April demand",
         min_value=0.30,
         max_value=1.50,
-        value=st.session_state.get("season_april", 0.6),
+        value=st.session_state.get("season_april", 0.70),
         step=0.05
     )
+    
     st.session_state.season_april = season_april
+
 
     st.divider()
     st.subheader("🎮 Game Controls")
@@ -739,27 +693,32 @@ if st.session_state.game_completed and st.session_state.user_id:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button(f"{t('save_score')} (€{st.session_state.total_revenue:,.0f})", use_container_width=True):
-            update_user_stats(st.session_state.user_id, int(st.session_state.total_revenue))
+            update_user_stats(st.session_state.user_id, st.session_state.total_revenue)
             st.success(t("score_saved"))
             time.sleep(1)
             st.rerun()
 
 # ===== CALENDARIO PREZZI =====
+
 st.header("💰 Imposta prezzi")
 
 giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 
+# mese visualizzato
 if "calendar_month" not in st.session_state:
-    st.session_state.calendar_month = 4
+    st.session_state.calendar_month = 4  # April
 
 
 def draw_calendar(month):
     year = 2026
     first_day = datetime(year, month, 1)
+
+    # trova il lunedì della prima settimana
     start = first_day - timedelta(days=first_day.weekday())
 
     st.subheader("🌸 APRILE 2026")
-
+    
+    # intestazione giorni settimana
     cols = st.columns(7)
     for i, g in enumerate(giorni):
         cols[i].markdown(f"**{g}**")
@@ -775,17 +734,21 @@ def draw_calendar(month):
                     date_str = d.strftime("%Y-%m-%d")
                     occ = st.session_state.daily_occupancy.get(date_str, 0)
                     rooms = st.session_state.total_rooms
+                    date_str = d.strftime("%Y-%m-%d")
+                    occ = st.session_state.daily_occupancy.get(date_str, 0)
+                    rooms = st.session_state.total_rooms
 
                     price = st.number_input(
-                        f"{d.day}",
-                        min_value=10,
-                        max_value=500,
-                        step=5,
-                        value=st.session_state.prices.get(date_str, 100),
-                        key=f"price_{date_str}"
+                    f"{d.day}",
+                    min_value=10,
+                    max_value=500,
+                    step=5,
+                    value=st.session_state.prices.get(date_str, 100),
+                    key=f"price_{date_str}"
                     )
                     st.session_state.prices[date_str] = price
 
+                    # occupazione
                     if occ == 0:
                         st.caption(f"🟢 {occ}/{rooms}")
                     elif occ < rooms:
@@ -803,20 +766,24 @@ def draw_calendar(month):
 
 draw_calendar(4)
 
+
 # ===== PICKUP CHART =====
 st.header("📊 Analisi Prenotazioni")
 
+# Tabs per distinguere le due visualizzazioni
 tab1, tab2 = st.tabs(["📈 Pickup Chart (cumulativo per giorno di soggiorno)", "📋 Dettaglio per data prenotazione"])
 
 with tab1:
     st.subheader("Pickup Chart - Accumulo prenotazioni nel tempo")
     st.caption(t("pickup_explanation"))
-
+    
+    # Raccogli tutte le date di soggiorno (aprile) che hanno prenotazioni
     stay_dates = []
     for stay_date, bookings in st.session_state.bookings.items():
         try:
             date_obj = datetime.strptime(stay_date, "%Y-%m-%d")
-            if date_obj.month == 4:
+            if date_obj.month in [4]:  # Solo aprile e
+                # Verifica se ci sono prenotazioni
                 has_bookings = False
                 if isinstance(bookings, dict):
                     for value in bookings.values():
@@ -829,18 +796,19 @@ with tab1:
                             break
                 elif bookings > 0:
                     has_bookings = True
+                
                 if has_bookings:
                     stay_dates.append(stay_date)
         except (ValueError, TypeError):
             continue
-
+    
     if stay_dates:
         selected_stay = st.selectbox(
             "Seleziona giorno di soggiorno per vedere il pickup cumulativo",
             sorted(stay_dates, key=lambda x: datetime.strptime(x, "%Y-%m-%d")),
             format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y"),
             key="stay_select"
-        )
+    )
 
         if selected_stay and selected_stay in st.session_state.bookings:
             bookings_for_stay = st.session_state.bookings[selected_stay]
@@ -849,6 +817,7 @@ with tab1:
             cumulative = 0
 
             if isinstance(bookings_for_stay, dict):
+                # Ordina per data di prenotazione
                 for book_date, data in sorted(bookings_for_stay.items()):
                     if isinstance(data, dict):
                         rooms = data.get("rooms", 0)
@@ -860,42 +829,48 @@ with tab1:
                         try:
                             book_dt = datetime.strptime(book_date, "%Y-%m-%d")
                             date_label = book_dt.strftime("%d %b")
-                        except Exception:
-                            book_dt = None
+                        except:
+                            book_dt = None          # se non è una data valida, assegna None
                             date_label = book_date
 
                         pickup_data.append({
                             "Data prenotazione": date_label,
-                            "Data prenotazione_dt": book_dt,
+                            "Data prenotazione_dt": book_dt,   # ← salva l'oggetto datetime
                             "Pick-up giornaliero": rooms,
                             "Pick-up cumulativo": cumulative
-                        })
+                })
 
             if pickup_data:
+                # Crea DataFrame con i dati raccolti
                 df_pickup = pd.DataFrame(pickup_data)
+
+                # Rimuovi eventuali righe con data non valida (book_dt is None)
                 df_pickup = df_pickup.dropna(subset=["Data prenotazione_dt"])
+
+                # Imposta l'indice e ordina
                 df_pickup.set_index("Data prenotazione_dt", inplace=True)
                 df_pickup.sort_index(inplace=True)
 
+                # --- Il resto del codice per i grafici e le metriche ---
                 with st.expander("📘 Cos'è il Pick-up?"):
-                    st.markdown("Il **pick-up** misura quante prenotazioni si accumulano nel tempo per un dato giorno di soggiorno. Utile per capire quando i clienti prenotano e regolare i prezzi di conseguenza.")
+                    st.markdown("...")
 
                 col1, col2 = st.columns([2, 1])
                 with col1:
-                    st.subheader("Pick-up cumulativo per la data di soggiorno selezionata")
+                    st.subheader(f"Pick-up cumulativo per la data di soggiorno selezionata")
                     st.line_chart(df_pickup[["Pick-up cumulativo"]])
                     st.subheader("Pick-up giornaliero")
                     st.bar_chart(df_pickup[["Pick-up giornaliero"]])
 
                 with col2:
                     if not df_pickup.empty:
-                        total_rooms_stat = df_pickup["Pick-up giornaliero"].sum()
+                        total_rooms = df_pickup["Pick-up giornaliero"].sum()
                         first_booking = df_pickup.index.min().strftime("%d %b")
                         last_booking = df_pickup.index.max().strftime("%d %b")
                         peak_idx = df_pickup["Pick-up giornaliero"].idxmax()
                         peak_day = peak_idx.strftime("%d %b")
                         peak_value = df_pickup.loc[peak_idx, "Pick-up giornaliero"]
-                        st.metric("🏨 Totale camere prenotate", f"{total_rooms_stat}")
+                        st.metric("🏨 Totale camere prenotate", f"{total_rooms}")
                         st.metric("📅 Prima prenotazione", first_booking)
                         st.metric("📅 Ultima prenotazione", last_booking)
                         st.metric("📈 Giorno con più pickup", f"{peak_day} ({peak_value} camere)")
@@ -903,6 +878,7 @@ with tab1:
                 st.subheader("Dettaglio pickup giornaliero")
                 st.dataframe(df_pickup[["Data prenotazione", "Pick-up giornaliero", "Pick-up cumulativo"]], use_container_width=True, hide_index=True)
 
+    # ===== Calcola revenue totale (ora df_pickup non serve) =====
             total_rev = 0
             if isinstance(bookings_for_stay, dict):
                 for data in bookings_for_stay.values():
@@ -914,13 +890,14 @@ with tab1:
                         price = st.session_state.prices.get(selected_stay, 100)
                     total_rev += rooms * price
                 st.metric("💰 Revenue totale per questo giorno di soggiorno", f"€{total_rev:,.0f}")
-
 with tab2:
     st.subheader("Dettaglio prenotazioni per data di prenotazione")
     st.caption(t("booking_explanation"))
-
+    
+    # Usa lo STESSO mese selezionato nel calendario "Imposta prezzi"
     selected_month = st.session_state.calendar_month
-
+    
+    # Raccogli tutte le date di prenotazione (quando è stata fatta la prenotazione)
     booking_dates = set()
     for stay_date, bookings in st.session_state.bookings.items():
         if isinstance(bookings, dict):
@@ -931,9 +908,9 @@ with tab2:
                         booking_dates.add(booking_date)
                 except (ValueError, TypeError):
                     continue
-
+    
     booking_dates = sorted(list(booking_dates))
-
+    
     if booking_dates:
         selected_booking_date = st.selectbox(
             "Seleziona data di prenotazione",
@@ -941,39 +918,40 @@ with tab2:
             format_func=lambda x: datetime.strptime(x, "%Y-%m-%d").strftime("%d %b %Y"),
             key="booking_select"
         )
-
+        
         if selected_booking_date:
             st.markdown(f"**Prenotazioni ricevute il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}**")
-
+            
+            # Trova tutte le prenotazioni fatte in questa data per soggiorni futuri
             future_stays = []
             total_rooms_booked = 0
             total_revenue_day = 0
-
+            
             for stay_date, bookings in st.session_state.bookings.items():
                 if isinstance(bookings, dict) and selected_booking_date in bookings:
                     data = bookings[selected_booking_date]
-
+                    
                     if isinstance(data, dict):
                         rooms = data.get("rooms", 0)
                         price = data.get("price", st.session_state.prices.get(stay_date, 100))
                     else:
                         rooms = data
                         price = st.session_state.prices.get(stay_date, 100)
-
+                    
                     if rooms > 0:
                         revenue = rooms * price
                         total_rooms_booked += rooms
                         total_revenue_day += revenue
-
+                        
                         try:
                             stay_dt = datetime.strptime(stay_date, "%Y-%m-%d")
-                            booking_dt_obj = datetime.strptime(selected_booking_date, "%Y-%m-%d")
-                            days_before = (stay_dt - booking_dt_obj).days
+                            booking_dt = datetime.strptime(selected_booking_date, "%Y-%m-%d")
+                            days_before = (stay_dt - booking_dt).days
                             stay_formatted = stay_dt.strftime("%d %b %Y")
                         except (ValueError, TypeError):
                             days_before = "N/A"
                             stay_formatted = stay_date
-
+                        
                         future_stays.append({
                             "Data soggiorno": stay_formatted,
                             "Giorni dopo": days_before,
@@ -981,9 +959,12 @@ with tab2:
                             "Prezzo": f"€{price}",
                             "Revenue": f"€{revenue:,.0f}"
                         })
-
+            
             if future_stays:
+                # Mostra tabella dettagli
                 st.dataframe(pd.DataFrame(future_stays), use_container_width=True, hide_index=True)
+                
+                # Metriche riassuntive
                 col1, col2, col3 = st.columns(3)
                 col1.metric("📊 Totale camere prenotate in questo giorno", f"{total_rooms_booked}")
                 col2.metric("💰 Revenue generato in questo giorno", f"€{total_revenue_day:,.0f}")
@@ -991,6 +972,7 @@ with tab2:
             else:
                 st.info(f"Nessuna prenotazione trovata per il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}")
     else:
+        month_names = {3: "marzo", 4: "aprile"}
         st.info(t("no_bookings_month"))
 
 st.divider()
@@ -998,7 +980,7 @@ st.divider()
 st.header(t("current_state"))
 
 total_occ = sum(st.session_state.daily_occupancy.values())
-max_possible = st.session_state.total_rooms * 30
+max_possible = st.session_state.total_rooms * 30  # Solo aprile ha 30 giorni
 occupancy_percentage = (total_occ / max_possible * 100) if max_possible > 0 else 0
 
 if st.session_state.current_date <= datetime(2026, 4, 30):
@@ -1025,50 +1007,31 @@ else:
 
 start_date = datetime(2026, 3, 1)
 end_date = datetime(2026, 4, 30)
-total_days = (end_date - start_date).days + 1
+
+total_days = (end_date - start_date).days + 1  # Include il 1 aprile e il 30 aprile
 days_passed = (st.session_state.current_date - start_date).days + 1
+
 progress = min(1, days_passed / total_days)
 
-st.progress(progress, text=f"{t('progress_label')}: {days_passed}/{total_days} giorni")
+st.progress(progress, text=f"{t('progress_label')}: {days_passed}/{total_days} {t('progress_days_word')}")
 if total_occ > 0:
-    st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili in aprile")
+    st.caption(t("rooms_booked_caption").format(occupied=total_occ, total=max_possible))
 
 if st.session_state.current_date > datetime(2026, 4, 30):
     st.balloons()
     st.success(t("game_end").format(revenue=st.session_state.total_revenue))
-
-# ===== Aggiorna automaticamente il best score se l'utente è loggato =====
-if st.session_state.user_id:
-    user_stats = get_user_stats(st.session_state.user_id)
-    if user_stats:
-        username, email, best_score, games_played, created_at, last_game = user_stats
-        st.session_state.best_score = best_score
-        st.session_state.games_played = games_played
-        st.session_state.user_email = email
-        st.session_state.created_at = created_at
-        st.session_state.last_game = last_game
-        if st.session_state.total_revenue > best_score:
-            update_user_stats(st.session_state.user_id, st.session_state.total_revenue)
-            st.success(f"🎉 Nuovo record! Best score aggiornato a €{st.session_state.total_revenue:,.0f}")
-
-# ===== Mostra le metriche finali =====
-col1, col2, col3 = st.columns(3)
-col1.metric("Occupazione media aprile", f"{occupancy_percentage:.1f}%")
-
-avg_price = st.session_state.total_revenue / total_occ if total_occ > 0 else 0
-col2.metric("Prezzo medio", f"€{avg_price:.0f}")
-
-if st.session_state.daily_occupancy:
-    april_occupancy = {
-        date: occ
-        for date, occ in st.session_state.daily_occupancy.items()
-        if datetime.strptime(date, "%Y-%m-%d").month == 4
-    }
-    if april_occupancy:
-        best_day_str = max(april_occupancy.items(), key=lambda x: x[1])[0]
-        best_day = datetime.strptime(best_day_str, "%Y-%m-%d").strftime("%d %b")
-        col3.metric("Giorno più pieno di aprile", best_day)
-
-# ===== LEADERBOARD =====
-st.divider()
-show_leaderboard()
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric(t("avg_occupancy_april"), f"{occupancy_percentage:.1f}%")
+    avg_price = st.session_state.total_revenue / total_occ if total_occ > 0 else 0
+    col2.metric(t("avg_price"), f"€{avg_price:.0f}")
+    
+    
+    if st.session_state.daily_occupancy:
+        # Trova il giorno con più prenotazioni solo in aprile
+        april_occupancy = {date: occ for date, occ in st.session_state.daily_occupancy.items() 
+                          if datetime.strptime(date, "%Y-%m-%d").month == 4}
+        if april_occupancy:
+            best_day_str = max(april_occupancy.items(), key=lambda x: x[1])[0]
+            best_day = datetime.strptime(best_day_str, "%Y-%m-%d").strftime("%d %b")
+            col3.metric(t("fullest_day_april"), best_day)
