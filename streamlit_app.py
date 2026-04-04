@@ -23,8 +23,8 @@ DB_PATH = Path("/tmp/hotel_game.db")
 
 # SUPABASE database
 load_dotenv()
-SUPABASE_URL = os.getenv("https://drvaaneglmpjelqfmget.supabase.co")
-SUPABASE_KEY = os.getenv("sb_publishable_VReG-vrtPzK8JxBDI5L8nQ_SbAU5PCM")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://drvaaneglmpjelqfmget.supabase.co")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "sb_publishable_VReG-vrtPzK8JxBDI5L8nQ_SbAU5PCM")
 
 def get_db_connection():
     """Restituisce il client Supabase"""
@@ -243,53 +243,69 @@ def t(key):
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+def get_db_connection():
+    """Restituisce il client Supabase o None se fallisce"""
+    try:
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            return None
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"❌ Errore connessione Supabase: {e}", file=sys.stderr)
+        return None
+
 def get_user_by_email(email):
     supabase = get_db_connection()
+    if supabase is None:
+        return None
     response = supabase.table("users").select("*").eq("email", email).execute()
-    if response.data:
-        return response.data[0]
-    return None
+    return response.data[0] if response.data else None
 
 def get_user_by_identifier(identifier):
     supabase = get_db_connection()
+    if supabase is None:
+        return None
     response = supabase.table("users").select("*").or_(f"email.eq.{identifier},username.eq.{identifier}").execute()
-    if response.data:
-        return response.data[0]
-    return None
+    return response.data[0] if response.data else None
 
 def get_user_by_id(user_id):
     supabase = get_db_connection()
+    if supabase is None:
+        return None
     response = supabase.table("users").select("*").eq("id", user_id).execute()
-    if response.data:
-        return response.data[0]
-    return None
+    return response.data[0] if response.data else None
 
 def create_user(email, username, password):
     supabase = get_db_connection()
-    if not supabase:
+    if supabase is None:
         return None
     hashed = hash_password(password)
-    response = supabase.table("users").insert({
-        "email": email,
-        "username": username,
-        "password": hashed,
-        "created_at": datetime.now().isoformat(),
-        "last_login": datetime.now().isoformat(),
-        "best_score": 0,
-        "games_played": 0
-    }).execute()
-    if response.status_code == 201:
-        return response.data[0]["id"]
-    else:
+    try:
+        response = supabase.table("users").insert({
+            "email": email,
+            "username": username,
+            "password": hashed,
+            "created_at": datetime.now().isoformat(),
+            "last_login": datetime.now().isoformat(),
+            "best_score": 0,
+            "games_played": 0
+        }).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]["id"]
+        else:
+            return None
+    except Exception:
         return None
 
 def update_user_login(email):
     supabase = get_db_connection()
+    if supabase is None:
+        return
     supabase.table("users").update({"last_login": datetime.now().isoformat()}).eq("email", email).execute()
 
 def update_user_stats(user_id, score):
     supabase = get_db_connection()
-    
+    if supabase is None:
+        return
     # Get current best score
     user_resp = supabase.table("users").select("*").eq("id", user_id).execute()
     if not user_resp.data:
@@ -315,21 +331,17 @@ def update_user_stats(user_id, score):
 
 def get_user_scores(user_id, limit=10):
     supabase = get_db_connection()
+    if supabase is None:
+        return []
     response = supabase.table("scores").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
-    return [(item["score"], item["created_at"]) for item in response.data]
+    return [(item["score"], item["created_at"]) for item in response.data] if response.data else []
 
 def get_leaderboard(limit=10):
     supabase = get_db_connection()
+    if supabase is None:
+        return []
     response = supabase.table("users").select("username, best_score").order("best_score", desc=True).limit(limit).execute()
-    return [(item["username"], item["best_score"]) for item in response.data]
-
-def get_user_stats(user_id):
-    supabase = get_db_connection()
-    response = supabase.table("users").select("*").eq("id", user_id).execute()
-    if response.data:
-        u = response.data[0]
-        return (u["username"], u["email"], u["best_score"], u["games_played"], u["created_at"], u.get("last_game"))
-    return None
+    return [(item["username"], item["best_score"]) for item in response.data] if response.data else []
 
 # ===== LOGIN UI =====
 def show_login_ui():
