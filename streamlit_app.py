@@ -986,7 +986,7 @@ with tab2:
                 st.dataframe(pd.DataFrame(future_stays), use_container_width=True, hide_index=True)
                 col1, col2, col3 = st.columns(3)
                 col1.metric(t("total_rooms_this_day"), f"{total_rooms_booked}")
-                col2.metric("t("revenue_this_day"), f"€{total_revenue_day:,.0f}")
+                col2.metric("t("revenue_this_day"), f"{total_revenue_day:,.0f}")
                 col3.metric(t("future_stays_booked"), len(future_stays))
             else:
                 st.info(f"Nessuna prenotazione trovata per il {datetime.strptime(selected_booking_date, '%Y-%m-%d').strftime('%d %b %Y')}")
