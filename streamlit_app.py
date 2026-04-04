@@ -612,90 +612,90 @@ with st.sidebar:
 
 def show_login_ui():
 
-with st.sidebar:
-    st.divider()
-    st.header(t("controls"))
-
-    # Total rooms
-    rooms_value = st.number_input(
-        t("total_rooms"),
-        min_value=1,
-        max_value=300,
-        value=st.session_state.total_rooms,
-        step=1,
-        disabled=st.session_state.game_running,
-        key="rooms_input"
-    )
-    if rooms_value != st.session_state.total_rooms:
-        st.session_state.total_rooms = rooms_value
-
-    st.divider()
-    st.subheader("📈 Demand Curve Steepness")
-    alpha = st.slider(
-        "Alpha (demand sensitivity to price)",
-        min_value=0.01,
-        max_value=0.10,
-        value=st.session_state.get("alpha", 0.07),
-        step=0.005,
-        help="Higher alpha → demand drops faster when price increases"
-    )
-    st.session_state.alpha = alpha
-
-    st.divider()
-    st.subheader("📅 Seasonality")
-    season_april = st.slider(
-        "April demand",
-        min_value=0.30,
-        max_value=1.50,
-        value=st.session_state.get("season_april", 0.70),
-        step=0.05
-    )
+    with st.sidebar:
+        st.divider()
+        st.header(t("controls"))
     
-    st.session_state.season_april = season_april
-
-
+        # Total rooms
+        rooms_value = st.number_input(
+            t("total_rooms"),
+            min_value=1,
+            max_value=300,
+            value=st.session_state.total_rooms,
+            step=1,
+            disabled=st.session_state.game_running,
+            key="rooms_input"
+        )
+        if rooms_value != st.session_state.total_rooms:
+            st.session_state.total_rooms = rooms_value
+    
+        st.divider()
+        st.subheader("📈 Demand Curve Steepness")
+        alpha = st.slider(
+            "Alpha (demand sensitivity to price)",
+            min_value=0.01,
+            max_value=0.10,
+            value=st.session_state.get("alpha", 0.07),
+            step=0.005,
+            help="Higher alpha → demand drops faster when price increases"
+        )
+        st.session_state.alpha = alpha
+    
+        st.divider()
+        st.subheader("📅 Seasonality")
+        season_april = st.slider(
+            "April demand",
+            min_value=0.30,
+            max_value=1.50,
+            value=st.session_state.get("season_april", 0.70),
+            step=0.05
+        )
+        
+        st.session_state.season_april = season_april
+    
+    
+        st.divider()
+        st.subheader("🎮 Game Controls")
+        if st.button(t("start"), use_container_width=True):
+            st.session_state.game_running = True
+            st.session_state.last_update = time.time()
+            st.session_state.game_completed = False
+            if st.session_state.paused_elapsed > 0:
+                st.session_state.last_update = time.time() - st.session_state.paused_elapsed
+                st.session_state.paused_elapsed = 0
+    
+        if st.button(t("next_day"), use_container_width=True):
+            if st.session_state.current_date <= datetime(2026, 4, 30):
+                advance_day()
+                st.rerun()
+            else:
+                st.session_state.game_running = False
+                st.session_state.game_completed = True
+                st.rerun()
+    
+        if st.button(t("reset"), use_container_width=True):
+            reset_game()
+    
     st.divider()
-    st.subheader("🎮 Game Controls")
-    if st.button(t("start"), use_container_width=True):
-        st.session_state.game_running = True
-        st.session_state.last_update = time.time()
-        st.session_state.game_completed = False
-        if st.session_state.paused_elapsed > 0:
-            st.session_state.last_update = time.time() - st.session_state.paused_elapsed
-            st.session_state.paused_elapsed = 0
-
-    if st.button(t("next_day"), use_container_width=True):
-        if st.session_state.current_date <= datetime(2026, 4, 30):
-            advance_day()
-            st.rerun()
-        else:
-            st.session_state.game_running = False
-            st.session_state.game_completed = True
-            st.rerun()
-
-    if st.button(t("reset"), use_container_width=True):
-        reset_game()
-
-st.divider()
-st.subheader(t("stats"))
-st.metric(t("date"), st.session_state.current_date.strftime("%d/%m/%Y"))
-st.metric(t("total_revenue"), f"€{st.session_state.total_revenue:,.0f}")
-
-st.divider()
-
-if st.session_state.game_running:
-    st.info(t("click_next_day"))
-elif st.session_state.current_date == datetime(2026, 3, 1) and not st.session_state.game_completed:
-    st.info(t("click_start"))
-
-if st.session_state.game_completed and st.session_state.user_id:
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button(f"{t('save_score')} (€{st.session_state.total_revenue:,.0f})", use_container_width=True):
-            update_user_stats(st.session_state.user_id, st.session_state.total_revenue)
-            st.success(t("score_saved"))
-            time.sleep(1)
-            st.rerun()
+    st.subheader(t("stats"))
+    st.metric(t("date"), st.session_state.current_date.strftime("%d/%m/%Y"))
+    st.metric(t("total_revenue"), f"€{st.session_state.total_revenue:,.0f}")
+    
+    st.divider()
+    
+    if st.session_state.game_running:
+        st.info(t("click_next_day"))
+    elif st.session_state.current_date == datetime(2026, 3, 1) and not st.session_state.game_completed:
+        st.info(t("click_start"))
+    
+    if st.session_state.game_completed and st.session_state.user_id:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button(f"{t('save_score')} (€{st.session_state.total_revenue:,.0f})", use_container_width=True):
+                update_user_stats(st.session_state.user_id, st.session_state.total_revenue)
+                st.success(t("score_saved"))
+                time.sleep(1)
+                st.rerun()
 
 # ===== CALENDARIO PREZZI =====
 
