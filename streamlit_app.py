@@ -128,6 +128,11 @@ TRANSLATIONS = {
         "booking_explanation": "Mostra tutte le prenotazioni fatte in una specifica data per soggiorni futuri (aprile)",
         "no_bookings_month": "Nessuna prenotazione registrata ad aprile 2026",
         "progress_label": "Avanzamento",
+        "progress_days_word": "giorni",
+        "rooms_booked_caption": "📊 {occupied} camere prenotate su {total} disponibili in aprile",
+        "avg_occupancy_april": "Occupazione media aprile",
+        "avg_price": "Prezzo medio",
+        "fullest_day_april": "Giorno più pieno di aprile",
     },
     "en": {
         "title": "🏨 Hotel Revenue Management Game",
@@ -221,6 +226,11 @@ TRANSLATIONS = {
         "booking_explanation": "Shows all bookings made on a specific date for future stays (April)",
         "no_bookings_month": "No bookings recorded in April 2026",
         "progress_label": "Progress",
+        "progress_days_word": "days",        # for English
+        "rooms_booked_caption": "📊 {occupied} rooms booked out of {total} available in April",
+        "avg_occupancy_april": "Average April occupancy",
+        "avg_price": "Average price",
+        "fullest_day_april": "Fullest day in April",
     }
 }
 
@@ -448,7 +458,6 @@ def show_leaderboard():
 # ===== MAIN =====
 st.title("Game Dashboard")
 st.markdown("**Track your scores and compete on leaderboard!**")
-show_login_ui()
 st.divider()
 show_leaderboard()
 
@@ -1004,19 +1013,19 @@ days_passed = (st.session_state.current_date - start_date).days + 1
 
 progress = min(1, days_passed / total_days)
 
-st.progress(progress, text=f"{t('progress_label')}: {days_passed}/{total_days} giorni")
+st.progress(progress, text=f"{t('progress_label')}: {days_passed}/{total_days} {t('progress_days_word')}")
 if total_occ > 0:
-    st.caption(f"📊 {total_occ} camere prenotate su {max_possible} disponibili in aprile")
+    st.caption(t("rooms_booked_caption").format(occupied=total_occ, total=max_possible))
 
 if st.session_state.current_date > datetime(2026, 4, 30):
     st.balloons()
     st.success(t("game_end").format(revenue=st.session_state.total_revenue))
     
     col1, col2, col3 = st.columns(3)
-    col1.metric("Occupazione media aprile", f"{occupancy_percentage:.1f}%")
-    
+    col1.metric(t("avg_occupancy_april"), f"{occupancy_percentage:.1f}%")
     avg_price = st.session_state.total_revenue / total_occ if total_occ > 0 else 0
-    col2.metric("Prezzo medio", f"€{avg_price:.0f}")
+    col2.metric(t("avg_price"), f"€{avg_price:.0f}")
+    
     
     if st.session_state.daily_occupancy:
         # Trova il giorno con più prenotazioni solo in aprile
@@ -1025,4 +1034,4 @@ if st.session_state.current_date > datetime(2026, 4, 30):
         if april_occupancy:
             best_day_str = max(april_occupancy.items(), key=lambda x: x[1])[0]
             best_day = datetime.strptime(best_day_str, "%Y-%m-%d").strftime("%d %b")
-            col3.metric("Giorno più pieno di aprile", best_day)
+            col3.metric(t("fullest_day_april"), best_day)
