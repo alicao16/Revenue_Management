@@ -127,6 +127,10 @@ TRANSLATIONS = {
         "progress_label": "Avanzamento",
         "average_occupancy_april": "Occupazione media aprile",
         "average_price": "Prezzo medio",
+        "progress_days_word": "giorni",
+        "analisi_prenotazioni": "📊 Analisi Prenotazioni",
+        "pickup_tab": "📈 Pickup Chart (cumulativo per giorno di soggiorno)",
+        "details_tab": "📋 Dettaglio per data prenotazione",
     },
     "en": {
         "title": "🏨 Hotel Revenue Management Game",
@@ -221,6 +225,10 @@ TRANSLATIONS = {
         "progress_label": "Progress",
         "average_occupancy_april": "Average April occupancy",
         "average_price": "Average price",
+        "progress_days_word": "days",
+        "analisi_prenotazioni": "📊 Booking Analysis",
+        "pickup_tab": "📈 Pickup Chart (cumulative per stay day)",
+        "details_tab": "📋 Details by booking date",
     }
 }
 
@@ -808,9 +816,8 @@ def draw_calendar(month):
 draw_calendar(4)
 
 # ===== PICKUP CHART =====
-st.header("📊 Analisi Prenotazioni")
-
-tab1, tab2 = st.tabs(["📈 Pickup Chart (cumulativo per giorno di soggiorno)", "📋 Dettaglio per data prenotazione"])
+st.header(t("analisi_prenotazioni"))
+tab1, tab2 = st.tabs([t("pickup_tab"), t("details_tab")])
 
 with tab1:
     st.subheader("Pickup Chart - Accumulo prenotazioni nel tempo")
