@@ -980,7 +980,8 @@ with tab2:
                             t("rooms_col"): rooms,
                             t("price_col": f"€{price}",
                             t("revenue_col"): f"€{revenue:,.0f}",
-                            })
+                            
+                        })
 
             if future_stays:
                 st.dataframe(pd.DataFrame(future_stays), use_container_width=True, hide_index=True)
