@@ -345,8 +345,8 @@ def show_login_ui():
         
         if st.session_state.user_id is None:
             col_login, col_register = st.columns(2)
-            login_clicked = col_login.button("Login", use_container_width=True)
-            register_clicked = col_register.button("Register", use_container_width=True)
+            login_clicked = col_login.button("Login", key="sidebar_login_tab", use_container_width=True)
+            register_clicked = col_register.button("Register", key="sidebar_register_tab", use_container_width=True)
             if login_clicked:
                 st.session_state.auth_tab = "login"
             if register_clicked:
@@ -356,7 +356,7 @@ def show_login_ui():
                 identifier = st.text_input("Email or Username", key="login_identifier")
                 password = st.text_input("Password", type="password", key="login_password")
 
-                if st.button("Login", use_container_width=True):
+                if st.button("Login", key="sidebar_login_button", use_container_width=True):
                     if identifier and password:
                         user = get_user_by_identifier(identifier)
                         if user and user["password"] == hash_password(password):
@@ -377,7 +377,7 @@ def show_login_ui():
                 reg_password = st.text_input("Password", type="password", key="reg_password")
                 reg_password_confirm = st.text_input("Confirm password", type="password", key="reg_password_confirm")
                 
-                if st.button("Register", use_container_width=True):
+                if st.button("Register", key="sidebar_register_confirm", use_container_width=True):
                     if not reg_email or not reg_username or not reg_password:
                         st.error("All fields are required")
                     elif '@' not in reg_email:
@@ -429,7 +429,7 @@ def show_login_ui():
                 else:
                     st.info("No scores yet")
             
-            if st.button("Logout", use_container_width=True):
+            if st.button("Logout", key="sidebar_logout_button", use_container_width=True):
                 st.session_state.user_id = None
                 st.session_state.user_email = None
                 st.session_state.user_username = None
@@ -442,7 +442,7 @@ def show_leaderboard():
         if st.session_state.get("user_id"):
             st.subheader("Leaderboard")
         else:
-            if st.button("Leaderboard"):
+            if st.button("Leaderboard", key="leaderboard_button", use_container_width=True):
                 st.warning("Login required to view leaderboard")
                 st.session_state.auth_tab = "register"
                 st.rerun()
@@ -454,11 +454,9 @@ def show_leaderboard():
                 "Score": f"€{best_score:,.0f}"
             })
         st.dataframe(pd.DataFrame(leaderboard_data), use_container_width=True, hide_index=True)
-
 # ===== MAIN =====
 st.title("Game Dashboard")
 st.markdown("**Track your scores and compete on leaderboard!**")
-show_login_ui()
 st.divider()
 show_leaderboard()
 
@@ -612,7 +610,7 @@ with st.sidebar:
         st.session_state.language = selected_lang
         st.rerun()
 
-show_login_ui()
+def show_login_ui():
 
 with st.sidebar:
     st.divider()
