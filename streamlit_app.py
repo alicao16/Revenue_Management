@@ -125,6 +125,8 @@ TRANSLATIONS = {
         "booking_explanation": "Mostra tutte le prenotazioni fatte in una specifica data per soggiorni futuri (aprile)",
         "no_bookings_month": "Nessuna prenotazione registrata ad aprile 2026",
         "progress_label": "Avanzamento",
+        "average_occupancy_april": "Occupazione media aprile",
+        "average_price": "Prezzo medio",
     },
     "en": {
         "title": "🏨 Hotel Revenue Management Game",
@@ -217,6 +219,8 @@ TRANSLATIONS = {
         "booking_explanation": "Shows all bookings made on a specific date for future stays (April)",
         "no_bookings_month": "No bookings recorded in April 2026",
         "progress_label": "Progress",
+        "average_occupancy_april": "Average April occupancy",
+        "average_price": "Average price",
     }
 }
 
