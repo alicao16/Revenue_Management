@@ -978,9 +978,8 @@ with tab2:
                             t("stay_date"): stay_formatted,
                             t("days_after"): days_before,
                             t("rooms_col"): rooms,
-                            t("price_col": f"€{price}",
+                            t("price_col"): f"€{price}",
                             t("revenue_col"): f"€{revenue:,.0f}",
-                            
                         })
 
             if future_stays:
