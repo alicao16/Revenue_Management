@@ -958,6 +958,7 @@ with tab2:
         )
 
         if selected_booking_date:
+            formatted_date = datetime.strptime(selected_booking_date, "%Y-%m-%d").strftime("%d %b %Y")
             st.markdown(t("booking_received_on").format(date=formatted_date))
 
             future_stays = []
