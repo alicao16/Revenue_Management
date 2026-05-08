@@ -384,17 +384,19 @@ def get_user_scores(user_id: int, limit: int = 10):
         return []
 
 def get_leaderboard(limit: int = 10):
-    """Returns list of (username, best_score) tuples ordered by best_score desc."""
     try:
         res = (
             supabase()
             .table("users")
             .select("username, best_score")
-            .select(...).not_.is_("best_score", "null")
+            .not_.is_("best_score", "null")
+            .order("best_score", desc=True)
             .limit(limit)
             .execute()
         )
+
         return [(row["username"], row["best_score"]) for row in (res.data or [])]
+
     except Exception as e:
         st.error(f"DB error: {e}")
         return []
