@@ -792,8 +792,8 @@ with st.sidebar:
             st.session_state.paused_elapsed = 0
 
     if st.button(t("next_day"), use_container_width=True):
-    if st.session_state.current_date <= datetime(2026, 4, 30):
-        advance_day()
+        if st.session_state.current_date <= datetime(2026, 4, 30):
+            advance_day()
 
         if st.session_state.current_date > datetime(2026, 4, 30):
             st.session_state.game_completed = True
