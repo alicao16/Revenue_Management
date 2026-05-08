@@ -124,7 +124,7 @@ TRANSLATIONS = {
         "pickup": "📈 Pick‑up prenotazioni",
         "pickup_explanation": "Mostra come si accumulano le prenotazioni giorno per giorno per uno specifico giorno di soggiorno",
         "booking_explanation": "Mostra tutte le prenotazioni fatte in una specifica data per soggiorni futuri (aprile)",
-        "no_bookings_month": "Nessuna prenotazione registrata ad aprile 2026",
+        "no_bookings_month": "Nessuna prenotazione registrata nel periodo selezionato",
         "progress_label": "Avanzamento",
         "average_occupancy_april": "Occupazione media aprile",
         "average_price": "Prezzo medio",
@@ -235,7 +235,7 @@ TRANSLATIONS = {
         "pickup": "📈 Booking pick-up",
         "pickup_explanation": "Shows how bookings accumulate day by day for a specific stay date",
         "booking_explanation": "Shows all bookings made on a specific date for future stays (April)",
-        "no_bookings_month": "No bookings recorded in April 2026",
+        "no_bookings_month": "No bookings recorded in time frame selected",
         "progress_label": "Progress",
         "average_occupancy_april": "Average April occupancy",
         "average_price": "Average price",
@@ -1009,6 +1009,12 @@ with tab2:
                     booking_dt = datetime.strptime(booking_date, "%Y-%m-%d")
                     if booking_dt.month == selected_month:
                         booking_dates.add(booking_date)
+                except:
+                    continue
+            for booking_date in bookings.keys():
+                try:
+                    booking_dt = datetime.strptime(booking_date, "%Y-%m-%d")
+                    booking_dates.add(booking_date)
                 except (ValueError, TypeError):
                     continue
 
