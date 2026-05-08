@@ -264,11 +264,20 @@ def t(key):
     return TRANSLATIONS.get(lang, TRANSLATIONS["it"]).get(key, key)
 
 # ===== DATABASE FUNCTIONS (Supabase) =====
-import hashlib, os
 
-def hash_password(pwd):
+def hash_password(pwd: str) -> str:
     salt = os.urandom(16)
-    return salt.hex() + ":" + hashlib.pbkdf2_hmac("sha256", pwd.encode(), salt, 100000).hex()
+    h = hashlib.pbkdf2_hmac("sha256", pwd.encode(), salt, 100_000)
+    return salt.hex() + ":" + h.hex()
+
+def verify_password(pwd: str, stored: str) -> bool:
+    try:
+        salt_hex, h_hex = stored.split(":")
+        salt = bytes.fromhex(salt_hex)
+        h = hashlib.pbkdf2_hmac("sha256", pwd.encode(), salt, 100_000)
+        return h.hex() == h_hex
+    except Exception:
+        return False
 
 def _parse_dt(value) -> datetime | None:
     """Parse ISO timestamp string returned by Supabase into a datetime."""
@@ -359,6 +368,7 @@ def update_user_stats(user_id: int, score: int):
             games_played = games_res.data["games_played"]
 
         games_played += 1
+        update_payload["games_played"] = games_played 
         supabase().table("users").update(update_payload).eq("id", user_id).execute()
 
         # Insert score record
@@ -446,7 +456,7 @@ def show_login_ui():
                 if st.button(t("login_button"), use_container_width=True):
                     if identifier and password:
                         user = get_user_by_identifier(identifier)
-                        if user and user["password"] == hash_password(password):
+                        if user and verify_password(password, user["password"]):
                             st.session_state.user_id = user["id"]
                             st.session_state.user_email = user["email"]
                             st.session_state.user_username = user["username"]
@@ -588,6 +598,8 @@ if "init" not in st.session_state:
     st.session_state.user_username = None
     st.session_state.auth_tab = "login"
     st.session_state.score_already_saved = False
+    st.session_state.market_demand = 5
+    st.session_state.p0 = 100
 
     st.session_state.prices = {}
     d = datetime(2026, 4, 1)
@@ -595,7 +607,7 @@ if "init" not in st.session_state:
         st.session_state.prices[d.strftime("%Y-%m-%d")] = 100
         d += timedelta(days=1)
 
-    st.session_state.bookings = defaultdict(lambda: defaultdict(int))
+    st.session_state.bookings = st.session_state.bookings = defaultdict(dict)
     st.session_state.daily_occupancy = defaultdict(int)
     st.session_state.daily_revenue = defaultdict(float)
     st.session_state.daily_pickup = defaultdict(int)
@@ -663,6 +675,7 @@ def generate_bookings(booking_date):
             st.session_state.daily_pickup[booking_str] += new_bookings
             st.session_state.total_revenue += revenue
             total_new_bookings += new_bookings
+            st.session_state.total_revenue = sum(st.session_state.daily_revenue.values())
         stay_date += timedelta(days=1)
     return total_new_bookings
 
@@ -782,11 +795,12 @@ with st.sidebar:
         if st.session_state.current_date <= datetime(2026, 4, 30):
             advance_day()
             st.rerun()
-        else:
-            st.session_state.game_running = False
-            st.session_state.game_completed = True
+        if st.button(t("next_day"), use_container_width=True):
+            advance_day()
+            if st.session_state.current_date > datetime(2026, 4, 30):
+                st.session_state.game_completed = True
+                save_score_once()
             st.rerun()
-
     if st.button(t("reset"), use_container_width=True):
         reset_game()
 
