@@ -13,25 +13,23 @@ from pathlib import Path
 import sys
 
 # ===== SUPABASE SETUP =====
-
-
 from supabase import create_client, Client
+import os
+import streamlit as st
 
 @st.cache_resource
 def get_supabase_client() -> Client:
-    import os
+    url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
-    if not key:
-        raise ValueError("Missing SUPABASE_KEY")
 
-    url = os.getenv("SUPABASE_URL", "https://drvaaneglmpjelqfmget.supabase.co")
-    key = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRydmFhbmVnbG1wamVscWZtZ2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDIxOTAsImV4cCI6MjA5MDcxODE5MH0.FysY6cJ3KOYCwsYhP2GZtIgziaSVAe7ZqtBg7bEoAmQ")
+    if not url or not key:
+        raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY")
 
     return create_client(url, key)
-    
+
+
 def supabase() -> Client:
     return get_supabase_client()
-
 # ===== CONFIGURAZIONE =====
 st.set_page_config(layout="wide")
 
