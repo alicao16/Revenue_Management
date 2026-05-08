@@ -661,6 +661,7 @@ def generate_bookings(booking_date):
             revenue = new_bookings * price
             st.session_state.daily_revenue[stay_str] += revenue
             st.session_state.daily_pickup[booking_str] += new_bookings
+            st.session_state.total_revenue += revenue
             total_new_bookings += new_bookings
         stay_date += timedelta(days=1)
     return total_new_bookings
