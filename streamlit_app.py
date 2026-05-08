@@ -20,6 +20,9 @@ from supabase import create_client, Client
 @st.cache_resource
 def get_supabase_client() -> Client:
     import os
+    key = os.getenv("SUPABASE_KEY")
+    if not key:
+        raise ValueError("Missing SUPABASE_KEY")
 
     url = os.getenv("SUPABASE_URL", "https://drvaaneglmpjelqfmget.supabase.co")
     key = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRydmFhbmVnbG1wamVscWZtZ2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDIxOTAsImV4cCI6MjA5MDcxODE5MH0.FysY6cJ3KOYCwsYhP2GZtIgziaSVAe7ZqtBg7bEoAmQ")
@@ -133,6 +136,17 @@ TRANSLATIONS = {
         "details_tab": "📋 Dettaglio per data prenotazione",
         "booking_details_by_date": "Dettaglio prenotazioni per data di prenotazione",
         "select_booking_date": "Seleziona data di prenotazione",
+        "booking_received_on": "### 📅 Prenotazioni ricevute il {date}",
+        "stay_date": "Data soggiorno",
+        "days_after": "Lead time (giorni)",
+        "rooms_col": "Camere",
+        "price_col": "Prezzo",
+        "revenue_col": "Revenue",
+        "total_rooms_this_day": "Camere prenotate",
+        "revenue_this_day": "Revenue generato",
+        "future_stays_booked": "Soggiorni prenotati",
+        "rooms_booked_caption": "Camere prenotate: {occupied}/{total}",
+        "fullest_day_april": "Giorno più occupato",
     },
     "en": {
         "title": "🏨 Hotel Revenue Management Game",
@@ -233,6 +247,17 @@ TRANSLATIONS = {
         "details_tab": "📋 Details by booking date",
         "booking_details_by_date": "Booking details by booking date",
         "select_booking_date": "Select booking date",
+        "booking_received_on": "### 📅 Bookings received on {date}",
+        "stay_date": "Stay date",
+        "days_after": "Lead time (days)",
+        "rooms_col": "Rooms",
+        "price_col": "Price",
+        "revenue_col": "Revenue",
+        "total_rooms_this_day": "Rooms booked",
+        "revenue_this_day": "Generated revenue",
+        "future_stays_booked": "Booked stays",
+        "rooms_booked_caption": "Rooms booked: {occupied}/{total}",
+        "fullest_day_april": "Most occupied day",
     }
 }
 
@@ -241,9 +266,11 @@ def t(key):
     return TRANSLATIONS.get(lang, TRANSLATIONS["it"]).get(key, key)
 
 # ===== DATABASE FUNCTIONS (Supabase) =====
+import hashlib, os
 
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+def hash_password(pwd):
+    salt = os.urandom(16)
+    return salt.hex() + ":" + hashlib.pbkdf2_hmac("sha256", pwd.encode(), salt, 100000).hex()
 
 def _parse_dt(value) -> datetime | None:
     """Parse ISO timestamp string returned by Supabase into a datetime."""
@@ -329,9 +356,11 @@ def update_user_stats(user_id: int, score: int):
         # games_played++ — Supabase doesn't support field increments via the REST client
         # directly, so we read and write.
         games_res = supabase().table("users").select("games_played").eq("id", user_id).maybe_single().execute()
-        games_played = (games_res.data["games_played"] or 0) + 1
-        update_payload["games_played"] = games_played
+        games_played = 0
+        if games_res.data and games_res.data.get("games_played") is not None:
+            games_played = games_res.data["games_played"]
 
+        games_played += 1
         supabase().table("users").update(update_payload).eq("id", user_id).execute()
 
         # Insert score record
@@ -363,7 +392,7 @@ def get_leaderboard(limit: int = 10):
             supabase()
             .table("users")
             .select("username, best_score")
-            .order("best_score", desc=True)
+            .select(...).not_.is_("best_score", "null")
             .limit(limit)
             .execute()
         )
@@ -558,6 +587,7 @@ if "init" not in st.session_state:
     st.session_state.user_email = None
     st.session_state.user_username = None
     st.session_state.auth_tab = "login"
+    st.session_state.score_already_saved = False
 
     st.session_state.prices = {}
     d = datetime(2026, 4, 1)
@@ -581,72 +611,73 @@ if "init" not in st.session_state:
 def generate_bookings(booking_date):
     booking_str = booking_date.strftime("%Y-%m-%d")
     total_new_bookings = 0
-
     stay_date = datetime(2026, 4, 1)
-
     while stay_date <= datetime(2026, 4, 30):
-
         if stay_date < booking_date:
             stay_date += timedelta(days=1)
             continue
-
         stay_str = stay_date.strftime("%Y-%m-%d")
-
         current_occupancy = st.session_state.daily_occupancy[stay_str]
-        C = st.session_state.total_rooms
-        available = C - current_occupancy
-
+        capacity = st.session_state.total_rooms
+        available = capacity - current_occupancy
         if available <= 0:
             stay_date += timedelta(days=1)
             continue
-
-        p = st.session_state.prices.get(stay_str, 100)
-
         season_factor = st.session_state.season_april
-
-        n0 = st.session_state.get("market_demand", 5)
-        p0 = st.session_state.get("p0", 100)
+        base_demand = st.session_state.get("market_demand", 5)
+        reference_price = st.session_state.get("p0", 100)
         alpha = st.session_state.get("alpha", 1.1)
-        C = st.session_state.total_rooms
-
-        n0 = n0 * season_factor
-
-        if n0 > C:
-            p_so = p0 + (1 / alpha) * math.log(n0 / C - 1)
-        else:
-            p_so = float("inf")
-
-        sigma = 1 / (1 + math.exp(alpha * (p - p0)))
-        bookings = np.random.binomial(n=n0, p=sigma)
-        bookings = min(bookings, available)
-
-        days_before = max(1, (stay_date - booking_date).days)
-        time_factor = max(0.4, min(1.0, 20 / days_before))
-        bookings = int(bookings * time_factor)
-
-        new_bookings = min(bookings, available)
-
+        price = st.session_state.prices.get(stay_str, 100)
+        
+        # 1. domanda di mercato (volume)
+        demand_volume = base_demand * season_factor
+        
+        # 2. elasticità prezzo (logistica)
+        booking_probability = 1 / (1 + math.exp(alpha * (price - reference_price)))
+        
+        # 3. domanda attesa
+        expected_bookings = demand_volume * booking_probability
+        
+        # 4. realizzazione stocastica stabile
+        raw_bookings = np.random.poisson(max(0, expected_bookings))
+        
+        # 5. lead time (CURVA A CAMPANA REALISTICA)
+        days_before_arrival = max(1, (stay_date - booking_date).days)
+        
+        lead_time_factor = math.exp(-0.5 * ((days_before_arrival - 14) / 7) ** 2)
+        
+        lead_time_factor = max(0.1, lead_time_factor)
+        
+        raw_bookings = int(raw_bookings * lead_time_factor)
+        
+        # 6. capacity constraint
+        new_bookings = min(raw_bookings, available)
         if new_bookings > 0:
             st.session_state.bookings[stay_str][booking_str] = {
                 "rooms": new_bookings,
-                "price": p
-            }
+                "price": price}
+
             st.session_state.daily_occupancy[stay_str] += new_bookings
-            revenue = new_bookings * p
+            revenue = new_bookings * price
             st.session_state.daily_revenue[stay_str] += revenue
-            st.session_state.total_revenue += revenue
             st.session_state.daily_pickup[booking_str] += new_bookings
             total_new_bookings += new_bookings
-
         stay_date += timedelta(days=1)
-
     return total_new_bookings
 
 def advance_day():
+
     if st.session_state.current_date <= datetime(2026, 4, 30):
+
         new_bookings = generate_bookings(st.session_state.current_date)
+
         st.session_state.current_date += timedelta(days=1)
+
+        if st.session_state.current_date > datetime(2026, 4, 30):
+            st.session_state.game_running = False
+
         return new_bookings
+
     return 0
 
 def reset_game():
@@ -661,6 +692,25 @@ def reset_game():
     st.session_state.elapsed = 0
     st.session_state.paused_elapsed = 0
     st.session_state.game_completed = False
+    st.session_state.score_already_saved = False
+
+# ===== AGGIUNGI QUESTA FUNZIONE DOPO reset_game() =====
+
+def save_score_once():
+    """
+    Salva il punteggio UNA SOLA VOLTA quando la partita termina.
+    """
+    if not st.session_state.get("user_id"):
+        return
+
+    if st.session_state.get("score_already_saved", False):
+        return
+
+    final_score = int(st.session_state.total_revenue)
+
+    update_user_stats(st.session_state.user_id, final_score)
+
+    st.session_state.score_already_saved = True
 
 # ===== SHOW LOGIN UI =====
 with st.sidebar:
@@ -689,8 +739,7 @@ with st.sidebar:
         value=st.session_state.total_rooms,
         step=1,
         disabled=st.session_state.game_running,
-        key="rooms_input"
-    )
+        key="rooms_input")
     if rooms_value != st.session_state.total_rooms:
         st.session_state.total_rooms = rooms_value
 
@@ -702,10 +751,11 @@ with st.sidebar:
         max_value=1.5,
         value=st.session_state.get("alpha", 1.1),
         step=0.01,
-        help="Higher alpha → demand drops faster when price increases"
-    )
+        help="Higher alpha → demand drops faster when price increases")
     st.session_state.alpha = alpha
 
+    
+    
     st.divider()
     st.subheader("📅 Seasonality")
     season_april = st.slider(
@@ -1050,22 +1100,31 @@ if total_occ > 0:
     st.caption(t("rooms_booked_caption").format(occupied=total_occ, total=max_possible))
 
 if st.session_state.current_date > datetime(2026, 4, 30):
+
+    if not st.session_state.game_completed:
+        st.session_state.game_completed = True
+        save_score_once()
+
     st.balloons()
-    st.success(t("game_end").format(revenue=st.session_state.total_revenue))
+
+    st.success(
+        t("game_end").format(
+            revenue=st.session_state.total_revenue
+        )
+    )
 
 # ===== Aggiorna automaticamente il best score se l'utente è loggato =====
 if st.session_state.user_id:
     user_stats = get_user_stats(st.session_state.user_id)
+
     if user_stats:
         username, email, best_score, games_played, created_at, last_game = user_stats
-        st.session_state.best_score = best_score
-        st.session_state.games_played = games_played
+
+        st.session_state.best_score = best_score or 0
+        st.session_state.games_played = games_played or 0
         st.session_state.user_email = email
         st.session_state.created_at = created_at
         st.session_state.last_game = last_game
-        if st.session_state.total_revenue > best_score:
-            update_user_stats(st.session_state.user_id, st.session_state.total_revenue)
-            st.success(f"🎉 Nuovo record! Best score aggiornato a €{st.session_state.total_revenue:,.0f}")
 
 # ===== Mostra le metriche finali =====
 col1, col2, col3 = st.columns(3)
