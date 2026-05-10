@@ -16,7 +16,8 @@ import sys
 from supabase import create_client, Client
 import os
 import streamlit as st
-
+from dotenv import load_dotenv
+load_dotenv()
 @st.cache_resource
 def get_supabase_client() -> Client:
     url = os.getenv("SUPABASE_URL")
