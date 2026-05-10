@@ -13,6 +13,7 @@ from pathlib import Path
 import sys
 
 # ===== SUPABASE SETUP =====
+# ===== SUPABASE SETUP =====
 from supabase import create_client, Client
 import streamlit as st
 
@@ -20,12 +21,13 @@ import streamlit as st
 def get_supabase_client() -> Client:
     url = st.secrets.get("SUPABASE_URL")
     key = st.secrets.get("SUPABASE_KEY")
-    
+
     if not url or not key:
         st.error("Missing Supabase credentials (secrets not loaded)")
         st.stop()
 
     return create_client(url, key)
+
 
 def supabase() -> Client:
     return get_supabase_client()
