@@ -14,20 +14,14 @@ import sys
 
 # ===== SUPABASE SETUP =====
 from supabase import create_client, Client
-import os
 import streamlit as st
-from dotenv import load_dotenv
-load_dotenv()
+
 @st.cache_resource
 def get_supabase_client() -> Client:
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
-
-    if not url or not key:
-        raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY")
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
 
     return create_client(url, key)
-
 
 def supabase() -> Client:
     return get_supabase_client()
