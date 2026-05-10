@@ -1,8 +1,3 @@
-import os
-import streamlit as st
-
-st.write("CURRENT DIR:", os.getcwd())
-st.write("SECRETS:", st.secrets)
 import math
 import numpy as np
 import streamlit as st
