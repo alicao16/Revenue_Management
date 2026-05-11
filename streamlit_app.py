@@ -317,7 +317,6 @@ def get_user_by_id(user_id: int):
         return None
 
 def create_user(email: str, username: str, password: str):
-    """Returns the new user id, or None on conflict."""
     try:
         res = (
             supabase()
@@ -331,9 +330,15 @@ def create_user(email: str, username: str, password: str):
             })
             .execute()
         )
-        return res.data[0]["id"] if res.data else None
-    except Exception:
-        # Unique constraint violation → email/username already taken
+
+        if not res or not res.data:
+            st.error("Insert fallita: nessun dato ritornato dal DB")
+            return None
+
+        return res.data[0]["id"]
+
+    except Exception as e:
+        st.error(f"Errore DB reale: {e}")
         return None
 
 def update_user_login(email: str):
