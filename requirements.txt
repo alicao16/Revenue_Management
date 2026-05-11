@@ -1,6 +1,5 @@
 streamlit
 pandas
-supabase>=2.4.0
-postgrest>=0.16.0
+supabase==2.3.4
 python-dotenv
 httpx>=0.24,<0.28
