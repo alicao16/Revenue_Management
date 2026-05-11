@@ -1,7 +1,3 @@
-import streamlit as st
-
-st.write("URL:", st.secrets.get("SUPABASE_URL"))
-st.write("KEY:", st.secrets.get("SUPABASE_KEY"))
 import math
 import numpy as np
 import streamlit as st
@@ -22,13 +18,9 @@ from supabase import create_client, Client
 import streamlit as st
 
 @st.cache_resource
-def get_supabase_client() -> Client:
-    url = st.secrets.get("SUPABASE_URL")
-    key = st.secrets.get("SUPABASE_KEY")
-
-    if not url or not key:
-        st.error("Missing Supabase credentials (secrets not loaded)")
-        st.stop()
+def get_supabase_client():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
 
     return create_client(url, key)
 
