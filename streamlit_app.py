@@ -1,6 +1,7 @@
 import streamlit as st
 
-st.write(st.secrets)
+st.write("URL:", st.secrets.get("SUPABASE_URL"))
+st.write("KEY:", st.secrets.get("SUPABASE_KEY"))
 import math
 import numpy as np
 import streamlit as st
