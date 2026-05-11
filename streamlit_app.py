@@ -1,3 +1,6 @@
+import streamlit as st
+
+st.write(st.secrets)
 import math
 import numpy as np
 import streamlit as st
